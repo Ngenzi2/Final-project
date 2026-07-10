@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-navy: #12385b;
+  --color-brand-navy-deep: #0d2c47;
+  --color-brand-orange: #f59e0b;
+  --color-brand-orange-strong: #b45309;
+  --color-brand-orange-tint: #fff7ec;
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply m-0 overflow-hidden bg-[#eef1fb] text-[#192039] antialiased;
+  }
+
+  @media (max-width: 940px) {
+    html,
+    body,
+    #root {
+      height: auto;
+    }
+
+    body {
+      @apply overflow-visible;
+    }
+  }
+}
+
+@layer components {
+  .donut-chart {
+    background: conic-gradient(var(--color-brand-navy) 0 40%, var(--color-brand-orange) 40% 68%, #ef4444 68% 100%);
+  }
+
+  .donut-chart::after {
+    content: '';
+    position: absolute;
+    width: 78px;
+    height: 78px;
+    border-radius: inherit;
+    background: #ffffff;
+  }
+
+  .bar-fill {
+    background: linear-gradient(180deg, var(--color-brand-navy), #5b84a8);
+  }
+}
