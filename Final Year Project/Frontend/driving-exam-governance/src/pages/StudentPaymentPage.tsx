@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { useExamRegistrations } from '../hooks/useExamRegistrations'
 import { LoadingState } from '../components/LoadingState'
 import { ErrorState } from '../components/ErrorState'
+import { UrubutoPayModal } from '../components/UrubutoPayModal'
 import type { User } from '../types'
 import {
   itemMetaClass,
@@ -17,6 +19,7 @@ import {
 
 const StudentPaymentPage = ({ user }: { user: User }) => {
   const { registrations, loading, error, markPaid } = useExamRegistrations({ studentId: user.studentId ?? undefined })
+  const [payingId, setPayingId] = useState<number | null>(null)
 
   if (loading) return <LoadingState />
   if (error) return <ErrorState message={error} />
@@ -46,7 +49,7 @@ const StudentPaymentPage = ({ user }: { user: User }) => {
                   {registration.paid ? 'Paid' : 'Pending payment'}
                 </span>
                 {!registration.paid && (
-                  <button type="button" onClick={() => markPaid(registration.id)} className={smallButtonClass}>
+                  <button type="button" onClick={() => setPayingId(registration.id)} className={smallButtonClass}>
                     Pay 50,000 RWF
                   </button>
                 )}
@@ -55,6 +58,14 @@ const StudentPaymentPage = ({ user }: { user: User }) => {
           ))
         )}
       </div>
+
+      {payingId !== null && (
+        <UrubutoPayModal
+          amountLabel="50,000 RWF"
+          onClose={() => setPayingId(null)}
+          onConfirmed={() => markPaid(payingId)}
+        />
+      )}
     </div>
   )
 }

@@ -1,9 +1,9 @@
-import { useState } from 'react'
 import { CalendarDays, MapPin, UserRound } from 'lucide-react'
 import { useExamRegistrations } from '../hooks/useExamRegistrations'
 import { useStudents } from '../hooks/useStudents'
 import { LoadingState } from '../components/LoadingState'
 import { ErrorState } from '../components/ErrorState'
+import { QrCodeImage } from '../components/QrCodeImage'
 import type { User } from '../types'
 import {
   iconBadgeClass,
@@ -12,13 +12,11 @@ import {
   panelClass,
   sectionHeaderTextClass,
   sectionHeaderTitleClass,
-  smallButtonClass,
 } from '../constants/ui'
 
 const StudentQrTicketPage = ({ user }: { user: User }) => {
   const { registrations, loading, error } = useExamRegistrations({ studentId: user.studentId ?? undefined })
   const { students } = useStudents()
-  const [verifiedId, setVerifiedId] = useState<number | null>(null)
 
   const student = students.find((s) => s.id === user.studentId)
   const paidRegistrations = registrations.filter((registration) => registration.paid)
@@ -54,8 +52,9 @@ const StudentQrTicketPage = ({ user }: { user: User }) => {
                   <p className={itemMetaClass}>{registration.studentExamType}</p>
                 </div>
               </div>
-              <div className="rounded-2xl border-2 border-dashed border-[#f2c481] bg-brand-orange/7 py-5.5 text-center font-mono text-[0.95rem] tracking-[0.15em] text-brand-navy">
-                {registration.qrCode}
+              <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-[#f2c481] bg-brand-orange/7 py-5.5">
+                <QrCodeImage value={registration.qrCode} />
+                <p className="m-0 font-mono text-[0.85rem] tracking-[0.15em] text-brand-navy">{registration.qrCode}</p>
               </div>
               <div className="grid gap-1.5 rounded-xl bg-[#f6f7ff] px-4 py-3.5">
                 <p className={itemTitleClass}>Exam appointment</p>
@@ -68,14 +67,7 @@ const StudentQrTicketPage = ({ user }: { user: User }) => {
                   </span>
                 </p>
               </div>
-              <button type="button" onClick={() => setVerifiedId(registration.id)} className={smallButtonClass}>
-                Verify QR code
-              </button>
-              {verifiedId === registration.id && (
-                <p className="m-0 rounded-lg bg-emerald-500/12 px-3.5 py-2.5 text-center font-bold text-emerald-700">
-                  ✓ Verified — cleared for the {registration.studentExamType} exam.
-                </p>
-              )}
+              <p className={itemMetaClass}>Present this QR code to the exam authority on-site for scanning.</p>
             </div>
           ))
         )}

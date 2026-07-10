@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import type { FormEvent } from 'react'
-import { CalendarDays, CheckCircle2, MapPin, ScanLine, UserRound, XCircle } from 'lucide-react'
+import { Camera, CalendarDays, CheckCircle2, Keyboard, MapPin, ScanLine, UserRound, XCircle } from 'lucide-react'
 import * as qrApi from '../api/qr'
 import { ApiError } from '../api/client'
+import { QrScanner } from '../components/QrScanner'
 import type { QrVerifyResult } from '../types'
 import {
   inputClass,
@@ -14,6 +15,7 @@ import {
   primaryButtonClass,
   sectionHeaderTextClass,
   sectionHeaderTitleClass,
+  smallButtonClass,
 } from '../constants/ui'
 
 const VerifyQrPage = () => {
@@ -21,10 +23,10 @@ const VerifyQrPage = () => {
   const [result, setResult] = useState<QrVerifyResult | null>(null)
   const [notFound, setNotFound] = useState<string | null>(null)
   const [searching, setSearching] = useState(false)
+  const [scannerOpen, setScannerOpen] = useState(false)
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const trimmed = code.trim()
+  const runVerify = useCallback(async (rawCode: string) => {
+    const trimmed = rawCode.trim()
     if (!trimmed) return
     setSearching(true)
     setResult(null)
@@ -32,38 +34,74 @@ const VerifyQrPage = () => {
     try {
       const verifyResult = await qrApi.verifyQr(trimmed)
       setResult(verifyResult)
+      setCode(trimmed)
     } catch (err) {
       setNotFound(err instanceof ApiError ? err.message : "This QR code doesn't match any issued ticket.")
     } finally {
       setSearching(false)
     }
+  }, [])
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    void runVerify(code)
   }
+
+  const handleScan = useCallback(
+    (value: string) => {
+      setScannerOpen(false)
+      void runVerify(value)
+    },
+    [runVerify],
+  )
 
   return (
     <div className={panelClass}>
       <div className="mb-5.5">
         <h2 className={sectionHeaderTitleClass}>Verify QR code</h2>
         <p className={sectionHeaderTextClass}>
-          Scan or enter a student's QR code on exam day to confirm their identity, payment, and eligibility.
+          Scan a student's QR ticket with your camera, or enter the code manually, to confirm their identity, payment,
+          and eligibility on exam day.
         </p>
       </div>
-      <form onSubmit={handleSubmit} className="mb-5.5 flex items-end gap-3 max-[640px]:flex-col max-[640px]:items-stretch">
-        <label className={`${labelClass} flex-1`}>
-          QR code
-          <input
-            autoFocus
-            className={inputClass}
-            value={code}
-            onChange={(event) => setCode(event.target.value)}
-            placeholder="Paste or scan QR-XXXXX-XXXXXX"
-          />
-        </label>
-        <button type="submit" disabled={searching} className={primaryButtonClass}>
+
+      <div className="mb-5.5 flex gap-2.5">
+        <button
+          type="button"
+          onClick={() => setScannerOpen((prev) => !prev)}
+          className={scannerOpen ? smallButtonClass : `${smallButtonClass} opacity-60`}
+        >
           <span className="flex items-center gap-2">
-            <ScanLine size={18} /> {searching ? 'Checking...' : 'Verify'}
+            {scannerOpen ? <Keyboard size={16} /> : <Camera size={16} />}
+            {scannerOpen ? 'Switch to manual entry' : 'Scan with camera'}
           </span>
         </button>
-      </form>
+      </div>
+
+      {scannerOpen ? (
+        <div className="mb-5.5">
+          <QrScanner active={scannerOpen} onScan={handleScan} />
+          <p className={`${itemMetaClass} mt-3 justify-center text-center`}>Point the camera at the student's QR ticket.</p>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="mb-5.5 flex items-end gap-3 max-[640px]:flex-col max-[640px]:items-stretch">
+          <label className={`${labelClass} flex-1`}>
+            QR code
+            <input
+              autoFocus
+              className={inputClass}
+              value={code}
+              onChange={(event) => setCode(event.target.value)}
+              placeholder="Paste or type QR-XXXXX-XXXXXX"
+            />
+          </label>
+          <button type="submit" disabled={searching} className={primaryButtonClass}>
+            <span className="flex items-center gap-2">
+              <ScanLine size={18} /> {searching ? 'Checking...' : 'Verify'}
+            </span>
+          </button>
+        </form>
+      )}
 
       {notFound && (
         <div className="flex items-center gap-3.5 rounded-2xl border border-red-200 bg-red-50 px-5 py-4">
