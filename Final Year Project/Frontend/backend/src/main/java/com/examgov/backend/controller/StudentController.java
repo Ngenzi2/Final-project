@@ -1,9 +1,11 @@
 package com.examgov.backend.controller;
 
 import com.examgov.backend.dto.request.StudentCreateRequest;
+import com.examgov.backend.dto.request.StudentVerifyRequest;
 import com.examgov.backend.dto.request.TrainingStatusRequest;
 import com.examgov.backend.dto.response.BulkImportResponse;
 import com.examgov.backend.dto.response.StudentResponse;
+import com.examgov.backend.dto.response.StudentVerifyResponse;
 import com.examgov.backend.security.AppUserDetails;
 import com.examgov.backend.service.StudentService;
 import jakarta.validation.Valid;
@@ -56,6 +58,29 @@ public class StudentController {
             @Valid @RequestBody TrainingStatusRequest request,
             @AuthenticationPrincipal AppUserDetails principal) {
         return studentService.setTrainingStatus(id, request.trainingStatus(), principal);
+    }
+
+    @PatchMapping("/{id}/approve")
+    @PreAuthorize("hasAnyRole('COMPANY', 'AUTHORITY')")
+    public StudentResponse approve(@PathVariable Long id, @AuthenticationPrincipal AppUserDetails principal) {
+        return studentService.approve(id, principal);
+    }
+
+    @PatchMapping("/{id}/reject")
+    @PreAuthorize("hasAnyRole('COMPANY', 'AUTHORITY')")
+    public StudentResponse reject(@PathVariable Long id, @AuthenticationPrincipal AppUserDetails principal) {
+        return studentService.reject(id, principal);
+    }
+
+    @PatchMapping("/{id}/resend-verification")
+    @PreAuthorize("hasAnyRole('COMPANY', 'AUTHORITY')")
+    public StudentResponse resendVerification(@PathVariable Long id, @AuthenticationPrincipal AppUserDetails principal) {
+        return studentService.resendVerificationOtp(id, principal);
+    }
+
+    @PostMapping("/verify")
+    public StudentVerifyResponse verify(@Valid @RequestBody StudentVerifyRequest request) {
+        return studentService.verifyEmail(request.email(), request.otp());
     }
 
     @PostMapping(value = "/bulk-import", consumes = "multipart/form-data")

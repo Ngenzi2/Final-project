@@ -55,4 +55,7 @@ public class User {
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
+
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private boolean enabled = true;
 }

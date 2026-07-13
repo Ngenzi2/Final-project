@@ -1,5 +1,6 @@
 package com.examgov.backend.service;
 
+import com.examgov.backend.domain.ApprovalStatus;
 import com.examgov.backend.domain.ExamType;
 import com.examgov.backend.domain.Role;
 import com.examgov.backend.domain.Student;
@@ -9,6 +10,7 @@ import com.examgov.backend.domain.User;
 import com.examgov.backend.dto.request.StudentCreateRequest;
 import com.examgov.backend.dto.response.BulkImportResponse;
 import com.examgov.backend.dto.response.StudentResponse;
+import com.examgov.backend.dto.response.StudentVerifyResponse;
 import com.examgov.backend.exception.ConflictException;
 import com.examgov.backend.exception.ForbiddenActionException;
 import com.examgov.backend.exception.NotFoundException;
@@ -20,7 +22,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,23 +36,28 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class StudentService {
 
+    private static final SecureRandom RANDOM = new SecureRandom();
+
     private final StudentRepository studentRepository;
     private final TeacherRepository teacherRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final FileStorageService fileStorageService;
+    private final MailService mailService;
 
     public StudentService(
             StudentRepository studentRepository,
             TeacherRepository teacherRepository,
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
-            FileStorageService fileStorageService) {
+            FileStorageService fileStorageService,
+            MailService mailService) {
         this.studentRepository = studentRepository;
         this.teacherRepository = teacherRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.fileStorageService = fileStorageService;
+        this.mailService = mailService;
     }
 
     @Transactional
@@ -73,6 +83,8 @@ public class StudentService {
         student.setTeacher(teacher);
         student.setTrainingStatus(TrainingStatus.IN_TRAINING);
         student.setRegisteredAt(LocalDate.now());
+        student.setApprovalStatus(ApprovalStatus.PENDING);
+        student.setEmailVerified(false);
         student = studentRepository.save(student);
 
         if (photo != null && !photo.isEmpty()) {
@@ -87,9 +99,114 @@ public class StudentService {
         user.setName(request.name());
         user.setCompany(teacher.getCompany());
         user.setStudent(student);
+        user.setEnabled(false);
         userRepository.save(user);
 
         return toResponse(student);
+    }
+
+    @Transactional
+    public StudentResponse approve(Long studentId, AppUserDetails principal) {
+        Student student = studentRepository.findById(studentId).orElseThrow(() -> new NotFoundException("Student not found."));
+        assertCanManageRegistration(student, principal);
+
+        if (student.getApprovalStatus() != ApprovalStatus.PENDING) {
+            throw new ConflictException("This student registration has already been " + student.getApprovalStatus().name().toLowerCase() + ".");
+        }
+
+        student.setApprovalStatus(ApprovalStatus.APPROVED);
+        student.setApprovedAt(LocalDate.now());
+        student.setVerificationToken(generateOtp());
+        student.setVerificationTokenExpiresAt(Instant.now().plus(30, ChronoUnit.MINUTES));
+        student = studentRepository.save(student);
+
+        mailService.sendStudentVerificationOtp(student.getEmail(), student.getName(), student.getVerificationToken());
+
+        return toResponse(student);
+    }
+
+    @Transactional
+    public StudentResponse resendVerificationOtp(Long studentId, AppUserDetails principal) {
+        Student student = studentRepository.findById(studentId).orElseThrow(() -> new NotFoundException("Student not found."));
+        assertCanManageRegistration(student, principal);
+
+        if (student.getApprovalStatus() != ApprovalStatus.APPROVED) {
+            throw new ConflictException("This student must be approved before a verification code can be sent.");
+        }
+        if (student.isEmailVerified()) {
+            throw new ConflictException("This student's email is already verified.");
+        }
+
+        student.setVerificationToken(generateOtp());
+        student.setVerificationTokenExpiresAt(Instant.now().plus(30, ChronoUnit.MINUTES));
+        student = studentRepository.save(student);
+
+        mailService.sendStudentVerificationOtp(student.getEmail(), student.getName(), student.getVerificationToken());
+
+        return toResponse(student);
+    }
+
+    @Transactional
+    public StudentResponse reject(Long studentId, AppUserDetails principal) {
+        Student student = studentRepository.findById(studentId).orElseThrow(() -> new NotFoundException("Student not found."));
+        assertCanManageRegistration(student, principal);
+
+        if (student.getApprovalStatus() != ApprovalStatus.PENDING) {
+            throw new ConflictException("This student registration has already been " + student.getApprovalStatus().name().toLowerCase() + ".");
+        }
+
+        student.setApprovalStatus(ApprovalStatus.REJECTED);
+        return toResponse(studentRepository.save(student));
+    }
+
+    @Transactional
+    public StudentVerifyResponse verifyEmail(String email, String otp) {
+        Student student =
+                studentRepository
+                        .findByEmail(email)
+                        .orElseThrow(() -> new NotFoundException("No pending verification found for this email."));
+
+        if (student.isEmailVerified()) {
+            throw new ConflictException("This email is already verified. You can sign in.");
+        }
+
+        if (student.getVerificationToken() == null || !student.getVerificationToken().equals(otp)) {
+            throw new ConflictException("Incorrect verification code.");
+        }
+
+        if (student.getVerificationTokenExpiresAt() == null
+                || student.getVerificationTokenExpiresAt().isBefore(Instant.now())) {
+            throw new ConflictException("This code has expired. Ask your company to resend a new code.");
+        }
+
+        student.setEmailVerified(true);
+        student.setVerificationToken(null);
+        student.setVerificationTokenExpiresAt(null);
+        studentRepository.save(student);
+
+        userRepository
+                .findByStudentId(student.getId())
+                .ifPresent(
+                        user -> {
+                            user.setEnabled(true);
+                            userRepository.save(user);
+                        });
+
+        return new StudentVerifyResponse(true, "Email verified. You can now sign in.", student.getName());
+    }
+
+    private void assertCanManageRegistration(Student student, AppUserDetails principal) {
+        if (principal.getRole() == Role.COMPANY && student.getCompany().getId().equals(principal.getCompanyId())) {
+            return;
+        }
+        if (principal.getRole() == Role.AUTHORITY) {
+            return;
+        }
+        throw new ForbiddenActionException("You do not have access to this student registration.");
+    }
+
+    private String generateOtp() {
+        return String.format("%06d", RANDOM.nextInt(1_000_000));
     }
 
     @Transactional(readOnly = true)
@@ -236,6 +353,8 @@ public class StudentService {
                 student.getTeacher().getId(),
                 student.getTrainingStatus(),
                 student.getRegisteredAt(),
-                student.getPhotoPath() != null ? "/files/" + student.getPhotoPath() : null);
+                student.getPhotoPath() != null ? "/files/" + student.getPhotoPath() : null,
+                student.getApprovalStatus(),
+                student.isEmailVerified());
     }
 }

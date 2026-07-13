@@ -10,8 +10,9 @@ export function useStudents(params: StudentListParams = {}) {
   )
 
   const register = async (input: StudentCreateInput, photo?: File | null) => {
-    await studentsApi.registerStudent(input, photo)
+    const created = await studentsApi.registerStudent(input, photo)
     await refetch()
+    return created
   }
 
   const setTrainingStatus = async (studentId: number, trainingStatus: TrainingStatus) => {
@@ -19,5 +20,15 @@ export function useStudents(params: StudentListParams = {}) {
     await refetch()
   }
 
-  return { students: data ?? [], loading, error, refetch, register, setTrainingStatus }
+  const approve = async (studentId: number) => {
+    await studentsApi.approveStudent(studentId)
+    await refetch()
+  }
+
+  const reject = async (studentId: number) => {
+    await studentsApi.rejectStudent(studentId)
+    await refetch()
+  }
+
+  return { students: data ?? [], loading, error, refetch, register, setTrainingStatus, approve, reject }
 }

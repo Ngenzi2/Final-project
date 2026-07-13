@@ -1,5 +1,6 @@
 package com.examgov.backend.dto.response;
 
+import com.examgov.backend.domain.ApprovalStatus;
 import com.examgov.backend.domain.ExamType;
 import com.examgov.backend.domain.TrainingStatus;
 import java.time.LocalDate;
@@ -14,5 +15,7 @@ public record StudentResponse(
         Long teacherId,
         TrainingStatus trainingStatus,
         LocalDate registeredAt,
-        String photoUrl) {
+        String photoUrl,
+        ApprovalStatus approvalStatus,
+        boolean emailVerified) {
 }

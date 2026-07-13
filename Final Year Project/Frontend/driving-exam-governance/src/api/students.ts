@@ -37,3 +37,18 @@ export const setTrainingStatus = (studentId: number, trainingStatus: TrainingSta
     method: 'PATCH',
     body: { trainingStatus },
   })
+
+export const approveStudent = (studentId: number) =>
+  apiFetch<Student>(`/api/students/${studentId}/approve`, { method: 'PATCH' })
+
+export const rejectStudent = (studentId: number) =>
+  apiFetch<Student>(`/api/students/${studentId}/reject`, { method: 'PATCH' })
+
+export type StudentVerifyResult = {
+  verified: boolean
+  message: string
+  studentName: string | null
+}
+
+export const verifyStudentEmail = (token: string) =>
+  apiFetch<StudentVerifyResult>(`/api/students/verify?token=${encodeURIComponent(token)}`)

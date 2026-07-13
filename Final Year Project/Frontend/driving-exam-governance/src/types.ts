@@ -3,12 +3,15 @@ export type Role = 'AUTHORITY' | 'COMPANY' | 'TEACHER' | 'STUDENT'
 export type Page =
   | 'overview'
   | 'companies'
+  | 'directory'
   | 'examSites'
   | 'verifyQr'
   | 'companyOverview'
   | 'companyTeachers'
   | 'companyStudents'
-  | 'teacher'
+  | 'teacherStudents'
+  | 'teacherTimetable'
+  | 'teacherExams'
   | 'studentPayment'
   | 'studentQrTicket'
   | 'studentTimetable'
@@ -17,6 +20,7 @@ export type WeekDay = 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT'
 export type ExamType = 'CAR' | 'MOTORCYCLE' | 'TRUCK'
 export type TrainingStatus = 'IN_TRAINING' | 'READY_FOR_EXAM'
 export type RegistrationStatus = 'BOOKED' | 'CANCELLED'
+export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
 export type User = {
   id: number
@@ -83,6 +87,8 @@ export type Student = {
   trainingStatus: TrainingStatus
   registeredAt: string
   photoUrl: string | null
+  approvalStatus: ApprovalStatus
+  emailVerified: boolean
 }
 
 export type ExamSlot = {

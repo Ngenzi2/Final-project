@@ -10,18 +10,25 @@ import innesLogo from './assets/innes-logo.png'
 
 import OverviewPage from './pages/OverviewPage'
 import CompaniesPage from './pages/CompaniesPage'
+import DirectoryPage from './pages/DirectoryPage'
 import ExamSlotsPage from './pages/ExamSlotsPage'
 import VerifyQrPage from './pages/VerifyQrPage'
 import CompanyOverviewPage from './pages/CompanyOverviewPage'
 import CompanyTeachersPage from './pages/CompanyTeachersPage'
 import CompanyStudentsPage from './pages/CompanyStudentsPage'
-import TeacherPortalPage from './pages/TeacherPortalPage'
+import TeacherStudentsPage from './pages/TeacherStudentsPage'
+import TeacherTimetablePage from './pages/TeacherTimetablePage'
+import TeacherExamsPage from './pages/TeacherExamsPage'
 import StudentPaymentPage from './pages/StudentPaymentPage'
 import StudentQrTicketPage from './pages/StudentQrTicketPage'
 import StudentTimetablePage from './pages/StudentTimetablePage'
+import StudentVerifyPage from './pages/StudentVerifyPage'
+
+const getVerifyTokenFromUrl = () => new URLSearchParams(window.location.search).get('verifyToken')
 
 const App = () => {
   const [user, setUser] = useState<User | null>(null)
+  const [verifyToken, setVerifyToken] = useState<string | null>(() => getVerifyTokenFromUrl())
   const [activePage, setActivePage] = useState<Page>('overview')
   const [bootstrapping, setBootstrapping] = useState(() => Boolean(getToken()))
   const [sidebarHovered, setSidebarHovered] = useState(false)
@@ -64,6 +71,18 @@ const App = () => {
     setActivePage('overview')
   }
 
+  if (verifyToken) {
+    return (
+      <StudentVerifyPage
+        token={verifyToken}
+        onContinue={() => {
+          window.history.replaceState(null, '', window.location.pathname)
+          setVerifyToken(null)
+        }}
+      />
+    )
+  }
+
   if (bootstrapping) {
     return (
       <div className="grid h-screen w-full place-items-center bg-white">
@@ -84,6 +103,8 @@ const App = () => {
         return <OverviewPage />
       case 'companies':
         return <CompaniesPage />
+      case 'directory':
+        return <DirectoryPage />
       case 'examSites':
         return <ExamSlotsPage />
       case 'verifyQr':
@@ -94,8 +115,12 @@ const App = () => {
         return <CompanyTeachersPage />
       case 'companyStudents':
         return <CompanyStudentsPage />
-      case 'teacher':
-        return <TeacherPortalPage user={user} />
+      case 'teacherStudents':
+        return <TeacherStudentsPage />
+      case 'teacherTimetable':
+        return <TeacherTimetablePage user={user} />
+      case 'teacherExams':
+        return <TeacherExamsPage user={user} />
       case 'studentPayment':
         return <StudentPaymentPage user={user} />
       case 'studentQrTicket':
