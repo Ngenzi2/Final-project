@@ -1,184 +1,172 @@
-import { useMemo } from 'react'
-import { Building2, Clock, GraduationCap, QrCode, Users } from 'lucide-react'
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Line, LineChart, Area, AreaChart, Pie, PieChart, Cell, Legend } from 'recharts'
+import { Building2, CheckCircle2, GraduationCap, QrCode, Users, Wallet } from 'lucide-react'
 import { useCompanies } from '../hooks/useCompanies'
 import { useTeachers } from '../hooks/useTeachers'
 import { useStudents } from '../hooks/useStudents'
 import { useExamRegistrations } from '../hooks/useExamRegistrations'
+import { useExamSlots } from '../hooks/useExamSlots'
+import { useQrScanLogs } from '../hooks/useQrScanLogs'
 import { LoadingState } from '../components/LoadingState'
 import { ErrorState } from '../components/ErrorState'
-import { TrendLineChart } from '../components/TrendLineChart'
-import { buildRegistrationTrend } from '../utils/trend'
+import { StatCard } from '../components/StatCard'
+import { ChartCard } from '../components/ChartCard'
+import { ActivityTimeline } from '../components/ActivityTimeline'
+import { computeCompanyStats, computeExamSlotStats, computeRegistrationStats } from '../utils/stats'
+import { attendanceDistribution, buildDailyQrScans, buildMonthlyRevenue, groupStudentsByCompany, groupTeachersByCompany, paymentStatusDistribution } from '../utils/analytics'
+import { buildActivityFeed } from '../utils/activity'
+import { chartAxisColor, chartGridColor, chartPrimary } from '../constants/chartColors'
+import type { User } from '../types'
 import {
   cardClass,
-  chartCardClass,
   formatCurrency,
   itemMetaClass,
   itemTitleClass,
   listCardClass,
   listItemClass,
   panelClass,
-  paymentSplit,
   sectionHeaderTextClass,
-  sectionHeaderTitleClass,
   smallButtonClass,
 } from '../constants/ui'
 
-const OverviewPage = () => {
+const today = () => new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+
+const OverviewPage = ({ user }: { user: User }) => {
   const { companies, loading: companiesLoading, error: companiesError, approve } = useCompanies()
   const { teachers, loading: teachersLoading, error: teachersError } = useTeachers()
   const { students, loading: studentsLoading, error: studentsError } = useStudents()
   const { registrations, loading: registrationsLoading, error: registrationsError } = useExamRegistrations()
+  const { examSlots, loading: examSlotsLoading, error: examSlotsError } = useExamSlots()
+  const { scanLogs, loading: scanLogsLoading, error: scanLogsError } = useQrScanLogs()
 
-  const loading = companiesLoading || teachersLoading || studentsLoading || registrationsLoading
-  const error = companiesError || teachersError || studentsError || registrationsError
-
-  const pendingCompanies = companies.filter((company) => !company.approved)
-  const approvedCompanies = companies.filter((company) => company.approved)
-  const paidCount = registrations.filter((registration) => registration.paid).length
-
-  const dashboardStats = {
-    approvedCompanies: approvedCompanies.length,
-    pendingCompanies: pendingCompanies.length,
-    teachers: teachers.length,
-    students: students.length,
-    paidCount,
-    totalCollected: paidCount * (paymentSplit.site + paymentSplit.school),
-    siteRevenue: paidCount * paymentSplit.site,
-    schoolRevenue: paidCount * paymentSplit.school,
-  }
-
-  const registrationTrend = useMemo(
-    () =>
-      buildRegistrationTrend([
-        ...companies.map((company) => company.registrationDate),
-        ...teachers.map((teacher) => teacher.registeredAt),
-        ...students.map((student) => student.registeredAt),
-      ]),
-    [companies, teachers, students],
-  )
-
-  const trendFirstValue = registrationTrend[0]?.value ?? 0
-  const trendLastValue = registrationTrend[registrationTrend.length - 1]?.value ?? 0
-  const trendDeltaLabel =
-    trendFirstValue === 0
-      ? trendLastValue > 0
-        ? `+${trendLastValue}`
-        : '—'
-      : `${trendLastValue >= trendFirstValue ? '+' : ''}${Math.round(((trendLastValue - trendFirstValue) / trendFirstValue) * 100)}%`
+  const loading = companiesLoading || teachersLoading || studentsLoading || registrationsLoading || examSlotsLoading || scanLogsLoading
+  const error = companiesError || teachersError || studentsError || registrationsError || examSlotsError || scanLogsError
 
   if (loading) return <LoadingState label="Loading dashboard..." />
   if (error) return <ErrorState message={error} />
 
+  const companyStats = computeCompanyStats(companies)
+  const registrationStats = computeRegistrationStats(registrations)
+  const examSlotStats = computeExamSlotStats(examSlots)
+  const pendingCompanies = companies.filter((company) => !company.approved && !company.suspended)
+
+  const studentsPerCompany = groupStudentsByCompany(students, companies)
+  const teachersPerCompany = groupTeachersByCompany(teachers, companies)
+  const monthlyRevenue = buildMonthlyRevenue(registrations)
+  const paymentDistribution = paymentStatusDistribution(registrations)
+  const attendance = attendanceDistribution(scanLogs)
+  const dailyQrScans = buildDailyQrScans(scanLogs)
+  const activity = buildActivityFeed({ companies, teachers, students, registrations, scanLogs })
+
   return (
-    <section className={`${panelClass} grid gap-3.5 overflow-hidden`}>
-      <div>
-        <div className="mb-3.5">
-          <h2 className={sectionHeaderTitleClass}>Dashboard overview</h2>
-          <p className={sectionHeaderTextClass}>
-            Live status for authority approvals, training structure, payment split, and QR eligibility.
-          </p>
+    <section className="grid gap-5.5">
+      <div className={`${panelClass} flex items-center justify-between gap-4 max-[640px]:flex-col max-[640px]:items-start`}>
+        <div>
+          <h2 className="m-0 text-[1.8rem] text-[#1F2937]">Welcome, {user.name}</h2>
+          <p className={sectionHeaderTextClass}>{today()}</p>
         </div>
-
-        <div className="mb-3.5 grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
-          {[
-            { label: 'Approved companies', value: dashboardStats.approvedCompanies, icon: Building2, color: '#10b981' },
-            { label: 'Pending approvals', value: dashboardStats.pendingCompanies, icon: Clock, color: '#f59e0b' },
-            { label: 'Active teachers', value: dashboardStats.teachers, icon: Users, color: '#12385b' },
-            { label: 'Registered students', value: dashboardStats.students, icon: GraduationCap, color: '#4f5cff' },
-            { label: 'QR tickets issued', value: dashboardStats.paidCount, icon: QrCode, color: '#0ea5e9' },
-          ].map((metric) => (
-            <div
-              key={metric.label}
-              className="grid gap-1.5 rounded-xl border border-[#e6e8f0] border-t-8 border-t-brand-navy bg-white p-3.5"
-            >
-              <span
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg"
-                style={{ backgroundColor: `${metric.color}1f`, color: metric.color }}
-              >
-                <metric.icon size={16} strokeWidth={2} />
-              </span>
-              <span className="text-[0.82rem] text-[#6c6f93]">{metric.label}</span>
-              <strong className="text-[1.15rem] text-[#161a35]">{metric.value}</strong>
-            </div>
-          ))}
+        <div className="inline-flex items-center gap-2.5 rounded-full border border-[#E5EAF2] bg-white px-3.5 py-2.5 font-bold text-[#6B7280]">
+          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_0_5px_rgba(16,185,129,0.12)]" />
+          <span>System operational</span>
         </div>
+      </div>
 
-        <div className="mb-3.5 grid grid-cols-[1.4fr_1fr] gap-3.5 max-[940px]:grid-cols-1">
-          <div className={`${chartCardClass} min-h-40`}>
-            <div className="flex items-center justify-between gap-3 font-bold text-[#5e7184]">
-              <span>Registration trend</span>
-              <strong className="text-brand-orange-strong">{trendDeltaLabel}</strong>
-            </div>
-            <TrendLineChart data={registrationTrend} />
-          </div>
-          <div className={`${chartCardClass} min-h-40`}>
-            <div className="flex items-center justify-between gap-3 font-bold text-[#5e7184]">
-              <span>Payment status</span>
-              <strong className="text-brand-orange-strong">
-                {dashboardStats.paidCount}/{registrations.length}
-              </strong>
-            </div>
-            <div className="donut-chart relative m-auto grid h-24 w-24 place-items-center rounded-full">
-              <span className="relative z-1 text-lg font-extrabold text-[#14243a]">{dashboardStats.paidCount}</span>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+        <StatCard icon={Building2} label="Total driving companies" value={companyStats.total} color="#0B3B6E" />
+        <StatCard icon={GraduationCap} label="Total teachers" value={teachers.length} color="#4f5cff" />
+        <StatCard icon={Users} label="Total registered students" value={students.length} color="#0ea5e9" />
+        <StatCard icon={CheckCircle2} label="Total paid students" value={registrationStats.paid} color="#22C55E" />
+        <StatCard icon={Wallet} label="Total revenue collected" value={formatCurrency(registrationStats.totalRevenue)} color="#D9780F" highlighted />
+        <StatCard icon={QrCode} label="Examinations conducted" value={examSlotStats.completed} color="#EF4444" />
+      </div>
 
-        <div className="grid grid-cols-2 gap-3.5 max-[940px]:grid-cols-1">
-          <div className={cardClass}>
-            <h3 className="m-0 text-[#141a39]">Approval queue</h3>
-            <div className={listCardClass}>
-              {pendingCompanies.length === 0 ? (
-                <p>All driving companies are approved.</p>
-              ) : (
-                pendingCompanies.map((company) => (
-                  <div key={company.id} className={listItemClass}>
-                    <div>
-                      <p className={itemTitleClass}>{company.name}</p>
-                      <p className={itemMetaClass}>Waiting for authority approval</p>
-                    </div>
-                    <button type="button" onClick={() => approve(company.id)} className={smallButtonClass}>
-                      Approve
-                    </button>
+      <div className="grid grid-cols-3 gap-3.5 max-[940px]:grid-cols-1">
+        <ChartCard title="Students per company">
+          <BarChart data={studentsPerCompany}>
+            <CartesianGrid stroke={chartGridColor} vertical={false} />
+            <XAxis dataKey="name" tick={{ fontSize: 12, fill: chartAxisColor }} />
+            <YAxis tick={{ fontSize: 12, fill: chartAxisColor }} allowDecimals={false} />
+            <Tooltip />
+            <Bar dataKey="value" name="Students" fill={chartPrimary} radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ChartCard>
+        <ChartCard title="Teachers per company">
+          <BarChart data={teachersPerCompany}>
+            <CartesianGrid stroke={chartGridColor} vertical={false} />
+            <XAxis dataKey="name" tick={{ fontSize: 12, fill: chartAxisColor }} />
+            <YAxis tick={{ fontSize: 12, fill: chartAxisColor }} allowDecimals={false} />
+            <Tooltip />
+            <Bar dataKey="value" name="Teachers" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ChartCard>
+        <ChartCard title="Monthly revenue">
+          <LineChart data={monthlyRevenue}>
+            <CartesianGrid stroke={chartGridColor} vertical={false} />
+            <XAxis dataKey="name" tick={{ fontSize: 12, fill: chartAxisColor }} />
+            <YAxis tick={{ fontSize: 12, fill: chartAxisColor }} tickFormatter={(v) => `${v / 1000}k`} />
+            <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+            <Line type="monotone" dataKey="value" name="Revenue" stroke={chartPrimary} strokeWidth={2} dot={{ r: 3 }} />
+          </LineChart>
+        </ChartCard>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3.5 max-[940px]:grid-cols-1">
+        <ChartCard title="Payment status" height={200}>
+          <PieChart>
+            <Pie data={paymentDistribution} dataKey="value" nameKey="name" innerRadius={0} outerRadius={70} label>
+              {paymentDistribution.map((entry) => (
+                <Cell key={entry.name} fill={entry.color} />
+              ))}
+            </Pie>
+            <Legend />
+            <Tooltip />
+          </PieChart>
+        </ChartCard>
+        <ChartCard title="Examination attendance" height={200}>
+          <PieChart>
+            <Pie data={attendance} dataKey="value" nameKey="name" innerRadius={40} outerRadius={70} label>
+              {attendance.map((entry) => (
+                <Cell key={entry.name} fill={entry.color} />
+              ))}
+            </Pie>
+            <Legend />
+            <Tooltip />
+          </PieChart>
+        </ChartCard>
+        <ChartCard title="Daily QR scans" height={200}>
+          <AreaChart data={dailyQrScans}>
+            <CartesianGrid stroke={chartGridColor} vertical={false} />
+            <XAxis dataKey="name" tick={{ fontSize: 11, fill: chartAxisColor }} />
+            <YAxis tick={{ fontSize: 11, fill: chartAxisColor }} allowDecimals={false} />
+            <Tooltip />
+            <Area type="monotone" dataKey="value" name="Scans" stroke={chartPrimary} fill={chartPrimary} fillOpacity={0.18} strokeWidth={2} />
+          </AreaChart>
+        </ChartCard>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3.5 max-[940px]:grid-cols-1">
+        <div className={cardClass}>
+          <h3 className="m-0 text-[#1F2937]">Approval queue</h3>
+          <div className={listCardClass}>
+            {pendingCompanies.length === 0 ? (
+              <p>All driving companies are approved.</p>
+            ) : (
+              pendingCompanies.map((company) => (
+                <div key={company.id} className={listItemClass}>
+                  <div>
+                    <p className={itemTitleClass}>{company.name}</p>
+                    <p className={itemMetaClass}>Waiting for authority approval</p>
                   </div>
-                ))
-              )}
-            </div>
+                  <button type="button" onClick={() => approve(company.id)} className={smallButtonClass}>
+                    Approve
+                  </button>
+                </div>
+              ))
+            )}
           </div>
-          <div className={cardClass}>
-            <h3 className="m-0 text-[#141a39]">Payment distribution</h3>
-            <div className="flex items-center justify-between gap-4 border-b border-[#e8ebf4] py-2.5 text-[#4b507a]">
-              <span>Examination site</span>
-              <strong className="text-[#141a39]">{formatCurrency(dashboardStats.siteRevenue)}</strong>
-            </div>
-            <div className="flex items-center justify-between gap-4 border-b border-[#e8ebf4] py-2.5 text-[#4b507a]">
-              <span>Driving schools</span>
-              <strong className="text-[#141a39]">{formatCurrency(dashboardStats.schoolRevenue)}</strong>
-            </div>
-            <p className={itemMetaClass}>
-              Each paid registration contributes {formatCurrency(paymentSplit.site)} to the exam site and{' '}
-              {formatCurrency(paymentSplit.school)} to the driving school.
-            </p>
-          </div>
-          <div className={cardClass}>
-            <h3 className="m-0 text-[#141a39]">QR verification status</h3>
-            <div className="grid gap-1 rounded-2xl bg-brand-orange-tint p-4">
-              <strong className="text-3xl leading-none text-brand-orange-strong">{dashboardStats.paidCount}</strong>
-              <span className="font-bold text-[#92400e]">eligible bookings</span>
-            </div>
-            <p className={itemMetaClass}>
-              Paid registrations receive QR tickets that verify identity, company, assigned teacher, and exam eligibility.
-            </p>
-          </div>
-          <div className={cardClass}>
-            <h3 className="m-0 text-[#141a39]">System hierarchy</h3>
-            <ol className="m-0 grid list-none gap-2 pl-0 text-[#4b507a]">
-              <li>Authority approves companies and schedules exam dates/times.</li>
-              <li>Companies register and manage multiple teachers.</li>
-              <li>Teachers train students and book them onto an exam slot.</li>
-              <li>Students pay and use QR tickets for verification.</li>
-            </ol>
-          </div>
+        </div>
+        <div className={cardClass}>
+          <h3 className="m-0 text-[#1F2937]">Recent activity</h3>
+          <ActivityTimeline items={activity} />
         </div>
       </div>
     </section>

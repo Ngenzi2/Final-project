@@ -1,10 +1,17 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { CheckCircle2, GraduationCap, Search, UploadCloud, UserPlus, Users } from 'lucide-react'
+import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, Tooltip, XAxis, YAxis } from 'recharts'
+import { CheckCircle2, Clock, GraduationCap, QrCode, Search, UploadCloud, UserPlus, Users, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { useStudents } from '../hooks/useStudents'
-import { ApiError } from '../api/client'
+import { useExamRegistrations } from '../hooks/useExamRegistrations'
 import { LoadingState } from '../components/LoadingState'
 import { ErrorState } from '../components/ErrorState'
+import { StatCard } from '../components/StatCard'
+import { ChartCard } from '../components/ChartCard'
+import { Modal } from '../components/Modal'
+import { buildMonthlyRegistrations } from '../utils/analytics'
+import { chartAxisColor, chartGridColor, chartPrimary, statusGood, statusWarning } from '../constants/chartColors'
 import type { ExamType, TrainingStatus } from '../types'
 import {
   cardClass,
@@ -34,18 +41,16 @@ const statusFilters: { value: 'ALL' | TrainingStatus; label: string }[] = [
 ]
 
 const TeacherStudentsPage = () => {
-  const { students, loading, error, register, setTrainingStatus } = useStudents()
+  const { students, loading, error, register, setTrainingStatus, remove } = useStudents()
+  const { registrations } = useExamRegistrations()
 
-  const [form, setForm] = useState({ name: '', nationalId: '', email: '', password: '', examType: 'CAR' as ExamType })
+  const [form, setForm] = useState({ name: '', nationalId: '', email: '', examType: 'CAR' as ExamType })
   const [photo, setPhoto] = useState<File | null>(null)
-  const [formError, setFormError] = useState('')
-  const [formSuccess, setFormSuccess] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [studentToDelete, setStudentToDelete] = useState<{ id: number, name: string } | null>(null)
 
   const [studentSearch, setStudentSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'ALL' | TrainingStatus>('ALL')
-
-  const readyStudents = students.filter((student) => student.trainingStatus === 'READY_FOR_EXAM')
 
   const filteredStudents = students.filter((student) => {
     const matchesStatus = statusFilter === 'ALL' || student.trainingStatus === statusFilter
@@ -54,34 +59,37 @@ const TeacherStudentsPage = () => {
     return matchesStatus && matchesSearch
   })
 
-  const stats = [
-    { label: 'Total students', value: students.length, icon: Users, color: '#12385b' },
-    { label: 'Ready for exam', value: readyStudents.length, icon: GraduationCap, color: '#10b981' },
-    { label: 'In training', value: students.length - readyStudents.length, icon: UserPlus, color: '#f59e0b' },
+  const paidStudentIds = new Set(
+    registrations.filter((r) => r.status === 'BOOKED' && r.paid).map((r) => r.studentId),
+  )
+  const pendingApproval = students.filter((s) => s.approvalStatus === 'PENDING').length
+  const approved = students.filter((s) => s.approvalStatus === 'APPROVED').length
+  const registrationTrend = buildMonthlyRegistrations(students.map((s) => s.registeredAt))
+  const bookedStudentIds = new Set(registrations.filter((r) => r.status === 'BOOKED').map((r) => r.studentId))
+  const completionRate = [
+    { name: 'Paid', value: paidStudentIds.size, color: statusGood },
+    { name: 'Awaiting payment', value: Math.max(0, bookedStudentIds.size - paidStudentIds.size), color: statusWarning },
   ]
 
   const handleRegisterStudent = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setFormError('')
-    setFormSuccess('')
-    if (!form.name.trim() || !form.nationalId.trim() || !form.email.trim() || !form.password.trim()) {
-      setFormError('Fill in name, national ID, email, and password before submitting.')
+    if (!form.name.trim() || !form.nationalId.trim() || !form.email.trim()) {
+      toast.error('Validation Error', { description: 'Fill in name, national ID, and email before submitting.' })
       return
     }
     setSubmitting(true)
+
+    const promise = register(form, photo)
+    toast.promise(promise, {
+      loading: 'Registering student...',
+      success: `"${form.name}" registered successfully.`,
+      error: 'Failed to register student.'
+    })
+
     try {
-      const registered = await register(form, photo)
-      setFormSuccess(
-        `"${registered.name}" was registered successfully. Status: pending company approval — they can sign in once the company approves and they verify their email.`,
-      )
-      setForm({ name: '', nationalId: '', email: '', password: '', examType: 'CAR' })
+      await promise
+      setForm({ name: '', nationalId: '', email: '', examType: 'CAR' })
       setPhoto(null)
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setFormError(err.message)
-      } else {
-        setFormError('Could not reach the server. Confirm the backend is running, then try again.')
-      }
     } finally {
       setSubmitting(false)
     }
@@ -95,21 +103,34 @@ const TeacherStudentsPage = () => {
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-        {stats.map((stat) => (
-          <div
-            key={stat.label}
-            className="grid gap-1.5 rounded-xl border border-[#e6e8f0] border-t-8 border-t-brand-navy bg-white p-3.5"
-          >
-            <span
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg"
-              style={{ backgroundColor: `${stat.color}1f`, color: stat.color }}
-            >
-              <stat.icon size={16} strokeWidth={2} />
-            </span>
-            <span className="text-[0.82rem] text-[#6c6f93]">{stat.label}</span>
-            <strong className="text-[1.15rem] text-[#161a35]">{stat.value}</strong>
-          </div>
-        ))}
+        <StatCard icon={Users} label="Total students" value={students.length} color="#0B3B6E" />
+        <StatCard icon={Clock} label="Pending approval" value={pendingApproval} color="#F59E0B" />
+        <StatCard icon={CheckCircle2} label="Approved students" value={approved} color="#22C55E" />
+        <StatCard icon={GraduationCap} label="Paid students" value={paidStudentIds.size} color="#4f5cff" />
+        <StatCard icon={QrCode} label="QR generated" value={paidStudentIds.size} color="#0ea5e9" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3.5 max-[940px]:grid-cols-1">
+        <ChartCard title="Students registered per month">
+          <BarChart data={registrationTrend}>
+            <CartesianGrid stroke={chartGridColor} vertical={false} />
+            <XAxis dataKey="name" tick={{ fontSize: 12, fill: chartAxisColor }} />
+            <YAxis tick={{ fontSize: 12, fill: chartAxisColor }} allowDecimals={false} />
+            <Tooltip />
+            <Bar dataKey="value" name="New students" fill={chartPrimary} radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ChartCard>
+        <ChartCard title="Payment completion rate" height={200}>
+          <PieChart>
+            <Pie data={completionRate} dataKey="value" nameKey="name" innerRadius={40} outerRadius={70} label>
+              {completionRate.map((entry) => (
+                <Cell key={entry.name} fill={entry.color} />
+              ))}
+            </Pie>
+            <Legend />
+            <Tooltip />
+          </PieChart>
+        </ChartCard>
       </div>
 
       <div className={cardClass}>
@@ -117,7 +138,7 @@ const TeacherStudentsPage = () => {
           <span className={iconBadgeClass}>
             <UserPlus size={18} strokeWidth={2} />
           </span>
-          <h3 className="m-0 text-[#141a39]">Register a student</h3>
+          <h3 className="m-0 text-[#1F2937]">Register a student</h3>
         </div>
         <form onSubmit={handleRegisterStudent} className={formGridClass}>
           <label className={labelClass}>
@@ -132,10 +153,7 @@ const TeacherStudentsPage = () => {
             Email
             <input type="email" className={inputClass} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="student@example.com" />
           </label>
-          <label className={labelClass}>
-            Login password
-            <input type="password" className={inputClass} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-          </label>
+
           <label className={labelClass}>
             Exam type
             <select className={inputClass} value={form.examType} onChange={(e) => setForm({ ...form, examType: e.target.value as ExamType })}>
@@ -157,14 +175,7 @@ const TeacherStudentsPage = () => {
             The student's account stays inactive until your company approves the registration and the student verifies
             their email.
           </p>
-          {formError && <ErrorState message={formError} />}
-          {formSuccess && (
-            <p className="m-0 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-              <CheckCircle2 size={16} strokeWidth={2} className="mt-0.5 shrink-0" />
-              <span>{formSuccess}</span>
-            </p>
-          )}
-          <button type="submit" disabled={submitting} className={`${primaryButtonClass} disabled:cursor-not-allowed disabled:opacity-60`}>
+          <button type="submit" disabled={submitting} className={`${primaryButtonClass} mt-2 disabled:cursor-not-allowed disabled:opacity-60`}>
             {submitting ? 'Registering...' : 'Register student'}
           </button>
         </form>
@@ -176,7 +187,7 @@ const TeacherStudentsPage = () => {
             <span className={iconBadgeClass}>
               <Users size={18} strokeWidth={2} />
             </span>
-            <h3 className="m-0 text-[#141a39]">Your students</h3>
+            <h3 className="m-0 text-[#1F2937]">Your students</h3>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {statusFilters.map((filter) => (
@@ -184,16 +195,15 @@ const TeacherStudentsPage = () => {
                 key={filter.value}
                 type="button"
                 onClick={() => setStatusFilter(filter.value)}
-                className={`rounded-full px-3 py-1.5 text-[0.8rem] font-semibold ${
-                  statusFilter === filter.value ? 'bg-brand-navy text-white' : 'bg-[#f2f3f8] text-[#5a6178] hover:bg-[#e6e8f0]'
-                }`}
+                className={`rounded-full px-3 py-1.5 text-[0.8rem] font-semibold ${statusFilter === filter.value ? 'bg-brand-navy text-white' : 'bg-[#f2f3f8] text-[#6B7280] hover:bg-[#E5EAF2]'
+                  }`}
               >
                 {filter.label}
               </button>
             ))}
           </div>
         </div>
-        <label className="flex items-center gap-2.5 rounded-2xl border border-[#d7d8e5] bg-white px-3.5 py-2.5">
+        <label className="flex items-center gap-2.5 rounded-2xl border border-[#E5EAF2] bg-white px-3.5 py-2.5">
           <Search size={16} strokeWidth={2} className="text-slate-400" />
           <input
             type="text"
@@ -242,6 +252,14 @@ const TeacherStudentsPage = () => {
                     >
                       Mark {student.trainingStatus === 'READY_FOR_EXAM' ? 'in training' : 'ready for exam'}
                     </button>
+                    <button
+                      type="button"
+                      title="Delete student"
+                      onClick={() => setStudentToDelete({ id: student.id, name: student.name })}
+                      className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#c2410c] text-white shadow-sm transition-colors hover:bg-[#9a3412]"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 </div>
               ))
@@ -249,6 +267,38 @@ const TeacherStudentsPage = () => {
           </div>
         )}
       </div>
+
+      <Modal
+        isOpen={Boolean(studentToDelete)}
+        onClose={() => setStudentToDelete(null)}
+        title="Delete Student Registration"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="m-0 text-slate-600">
+            Are you sure you want to completely delete <strong>{studentToDelete?.name}</strong>'s registration? This action cannot be undone.
+          </p>
+          <div className="flex gap-3 justify-end mt-2">
+            <button
+              type="button"
+              onClick={() => setStudentToDelete(null)}
+              className="px-4 py-2 border-none font-medium text-[0.9rem] rounded-xl text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                const id = studentToDelete!.id
+                setStudentToDelete(null)
+                toast.promise(remove(id), { loading: 'Deleting...', success: 'Student successfully deleted', error: 'Could not delete student' })
+              }}
+              className="px-4 py-2 border-none font-medium text-[0.9rem] rounded-xl text-white bg-red-600 hover:bg-red-700 shadow-sm transition-colors cursor-pointer"
+            >
+              Yes, delete student
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

@@ -61,7 +61,7 @@ const TeacherTimetablePage = ({ user }: { user: User }) => {
           <span className={iconBadgeClass}>
             <Clock3 size={18} strokeWidth={2} />
           </span>
-          <h3 className="m-0 text-[#141a39]">Add a slot</h3>
+          <h3 className="m-0 text-[#1F2937]">Add a slot</h3>
         </div>
         <form onSubmit={handleAddTimetableSlot} className="grid grid-cols-4 gap-2.5 max-[640px]:grid-cols-1">
           <label className={labelClass}>
@@ -104,7 +104,7 @@ const TeacherTimetablePage = ({ user }: { user: User }) => {
               .filter((day) => myTeacher.timetable.some((slot) => slot.day === day))
               .map((day) => (
                 <div key={day} className="grid gap-2">
-                  <p className={`m-0 text-[0.8rem] font-bold uppercase tracking-wide ${day === todayWeekDay ? 'text-brand-orange-strong' : 'text-[#6c6f93]'}`}>
+                  <p className={`m-0 text-[0.8rem] font-bold uppercase tracking-wide ${day === todayWeekDay ? 'text-brand-orange-strong' : 'text-[#6B7280]'}`}>
                     {day}
                     {day === todayWeekDay ? ' · Today' : ''}
                   </p>
@@ -122,7 +122,7 @@ const TeacherTimetablePage = ({ user }: { user: User }) => {
                           type="button"
                           onClick={() => user.teacherId && removeTimetableSlot(user.teacherId, slot.id)}
                           aria-label="Remove slot"
-                          className="grid h-8 w-8 cursor-pointer place-items-center rounded-full border-none bg-[#f2f3f8] text-[#6c6f93] hover:bg-red-50 hover:text-red-600"
+                          className="grid h-8 w-8 cursor-pointer place-items-center rounded-full border-none bg-[#f2f3f8] text-[#6B7280] hover:bg-red-50 hover:text-red-600"
                         >
                           <Trash2 size={15} />
                         </button>

@@ -116,26 +116,26 @@ const DirectoryPage = () => {
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-        <div className="grid gap-1.5 rounded-xl border border-[#e6e8f0] border-t-8 border-t-brand-navy bg-white p-3.5">
+        <div className="grid gap-1.5 rounded-xl border border-[#E5EAF2] border-t-8 border-t-brand-navy bg-white p-3.5">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg" style={{ backgroundColor: '#0ea5e91f', color: '#0ea5e9' }}>
             <Wallet size={16} strokeWidth={2} />
           </span>
-          <span className="text-[0.82rem] text-[#6c6f93]">Total collected ({totals.paidCount} paid)</span>
-          <strong className="text-[1.15rem] text-[#161a35]">{formatCurrency(totals.collected)}</strong>
+          <span className="text-[0.82rem] text-[#6B7280]">Total collected ({totals.paidCount} paid)</span>
+          <strong className="text-[1.15rem] text-[#1F2937]">{formatCurrency(totals.collected)}</strong>
         </div>
-        <div className="grid gap-1.5 rounded-xl border border-[#e6e8f0] border-t-8 border-t-brand-navy bg-white p-3.5">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg" style={{ backgroundColor: '#12385b1f', color: '#12385b' }}>
+        <div className="grid gap-1.5 rounded-xl border border-[#E5EAF2] border-t-8 border-t-brand-navy bg-white p-3.5">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg" style={{ backgroundColor: '#0B3B6E1f', color: '#0B3B6E' }}>
             <Wallet size={16} strokeWidth={2} />
           </span>
-          <span className="text-[0.82rem] text-[#6c6f93]">Exam site share ({formatCurrency(paymentSplit.site)} each)</span>
-          <strong className="text-[1.15rem] text-[#161a35]">{formatCurrency(totals.siteShare)}</strong>
+          <span className="text-[0.82rem] text-[#6B7280]">Exam site share ({formatCurrency(paymentSplit.site)} each)</span>
+          <strong className="text-[1.15rem] text-[#1F2937]">{formatCurrency(totals.siteShare)}</strong>
         </div>
-        <div className="grid gap-1.5 rounded-xl border border-[#e6e8f0] border-t-8 border-t-brand-navy bg-white p-3.5">
+        <div className="grid gap-1.5 rounded-xl border border-[#E5EAF2] border-t-8 border-t-brand-navy bg-white p-3.5">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg" style={{ backgroundColor: '#10b9811f', color: '#10b981' }}>
             <Wallet size={16} strokeWidth={2} />
           </span>
-          <span className="text-[0.82rem] text-[#6c6f93]">Companies' share ({formatCurrency(paymentSplit.school)} each)</span>
-          <strong className="text-[1.15rem] text-[#161a35]">{formatCurrency(totals.schoolShare)}</strong>
+          <span className="text-[0.82rem] text-[#6B7280]">Companies' share ({formatCurrency(paymentSplit.school)} each)</span>
+          <strong className="text-[1.15rem] text-[#1F2937]">{formatCurrency(totals.schoolShare)}</strong>
         </div>
       </div>
       <p className={itemMetaClass}>
@@ -143,7 +143,7 @@ const DirectoryPage = () => {
         {formatCurrency(paymentSplit.school)} goes to the student's driving company.
       </p>
 
-      <label className="flex items-center gap-2.5 rounded-2xl border border-[#d7d8e5] bg-white px-3.5 py-2.5">
+      <label className="flex items-center gap-2.5 rounded-2xl border border-[#E5EAF2] bg-white px-3.5 py-2.5">
         <Search size={16} strokeWidth={2} className="text-slate-400" />
         <input
           type="text"
@@ -163,14 +163,14 @@ const DirectoryPage = () => {
             const totalStudents = companyTeachers.reduce((sum, entry) => sum + entry.teacherStudents.length, 0)
 
             return (
-              <div key={company.id} className="rounded-2xl border border-[#e6e8f0] bg-white">
+              <div key={company.id} className="rounded-2xl border border-[#E5EAF2] bg-white">
                 <button
                   type="button"
                   onClick={() => toggleCompany(company.id)}
                   className="flex w-full flex-wrap items-center justify-between gap-3 px-4.5 py-4 text-left"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="grid h-6 w-6 shrink-0 place-items-center text-[#6c6f93]">
+                    <span className="grid h-6 w-6 shrink-0 place-items-center text-[#6B7280]">
                       {companyExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     </span>
                     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-navy/10 text-brand-navy">
@@ -200,7 +200,7 @@ const DirectoryPage = () => {
                 </button>
 
                 {companyExpanded && (
-                  <div className="grid gap-2.5 border-t border-[#eceef4] px-4.5 py-3.5 pl-14 max-[640px]:pl-4.5">
+                  <div className="grid gap-2.5 border-t border-[#E5EAF2] px-4.5 py-3.5 pl-14 max-[640px]:pl-4.5">
                     <p className={itemMetaClass}>
                       {companyPaidCount} paid registration{companyPaidCount === 1 ? '' : 's'} from this company's students ={' '}
                       {formatCurrency(companyRevenue)} to the company + {formatCurrency(companySiteShare)} to the exam site.
@@ -213,14 +213,14 @@ const DirectoryPage = () => {
                         const readyCount = teacherStudents.filter(({ student }) => student.trainingStatus === 'READY_FOR_EXAM').length
 
                         return (
-                          <div key={teacher.id} className="rounded-xl border border-[#eceef4] bg-[#fbfcff]">
+                          <div key={teacher.id} className="rounded-xl border border-[#E5EAF2] bg-[#fbfcff]">
                             <button
                               type="button"
                               onClick={() => toggleTeacher(teacher.id)}
                               className="flex w-full flex-wrap items-center justify-between gap-3 px-3.5 py-3 text-left"
                             >
                               <div className="flex items-center gap-3">
-                                <span className="grid h-5 w-5 shrink-0 place-items-center text-[#6c6f93]">
+                                <span className="grid h-5 w-5 shrink-0 place-items-center text-[#6B7280]">
                                   {teacherExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                 </span>
                                 <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-orange-tint text-brand-orange-strong">
@@ -240,14 +240,14 @@ const DirectoryPage = () => {
                             </button>
 
                             {teacherExpanded && (
-                              <div className="grid gap-2 border-t border-[#eceef4] px-3.5 py-3 pl-11 max-[640px]:pl-3.5">
+                              <div className="grid gap-2 border-t border-[#E5EAF2] px-3.5 py-3 pl-11 max-[640px]:pl-3.5">
                                 {teacherStudents.length === 0 ? (
                                   <p className={itemMetaClass}>No students registered yet.</p>
                                 ) : (
                                   teacherStudents.map(({ student, paidCount }) => (
                                     <div
                                       key={student.id}
-                                      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#eceef4] bg-white px-3.5 py-2.5"
+                                      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#E5EAF2] bg-white px-3.5 py-2.5"
                                     >
                                       <div className="flex items-center gap-2.5">
                                         <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[#4f5cff]/10 text-[#2c38b0]">

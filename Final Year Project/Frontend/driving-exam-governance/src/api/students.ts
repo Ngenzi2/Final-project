@@ -5,7 +5,6 @@ export type StudentCreateInput = {
   name: string
   nationalId: string
   email: string
-  password: string
   examType: ExamType
 }
 
@@ -43,6 +42,9 @@ export const approveStudent = (studentId: number) =>
 
 export const rejectStudent = (studentId: number) =>
   apiFetch<Student>(`/api/students/${studentId}/reject`, { method: 'PATCH' })
+
+export const deleteStudent = (studentId: number) =>
+  apiFetch<void>(`/api/students/${studentId}`, { method: 'DELETE' })
 
 export type StudentVerifyResult = {
   verified: boolean

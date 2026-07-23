@@ -24,3 +24,6 @@ export const createExamSlot = (input: ExamSlotInput) =>
 
 export const getSlotRegistrations = (id: number) =>
   apiFetch<ExamRegistration[]>(`/api/exam-slots/${id}/registrations`)
+
+export const cancelExamSlot = (id: number) =>
+  apiFetch<ExamSlot>(`/api/exam-slots/${id}/cancel`, { method: 'PATCH' })

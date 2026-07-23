@@ -1,6 +1,6 @@
 import { useFetch } from './useFetch'
 import * as companiesApi from '../api/companies'
-import type { CompanyFiles, CompanyRegisterInput } from '../api/companies'
+import type { CompanyFiles, CompanyRegisterInput, CompanyUpdateInput } from '../api/companies'
 
 export function useCompanies() {
   const { data, loading, error, refetch } = useFetch(companiesApi.listCompanies, [])
@@ -15,5 +15,25 @@ export function useCompanies() {
     await refetch()
   }
 
-  return { companies: data ?? [], loading, error, refetch, register, approve }
+  const suspend = async (id: number) => {
+    await companiesApi.suspendCompany(id)
+    await refetch()
+  }
+
+  const unsuspend = async (id: number) => {
+    await companiesApi.unsuspendCompany(id)
+    await refetch()
+  }
+
+  const update = async (id: number, input: CompanyUpdateInput) => {
+    await companiesApi.updateCompany(id, input)
+    await refetch()
+  }
+
+  const remove = async (id: number) => {
+    await companiesApi.deleteCompany(id)
+    await refetch()
+  }
+
+  return { companies: data ?? [], loading, error, refetch, register, approve, suspend, unsuspend, update, remove }
 }

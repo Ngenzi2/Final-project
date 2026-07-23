@@ -1,5 +1,5 @@
 import { apiFetch } from './client'
-import type { ExamRegistration } from '../types'
+import type { ExamRegistration, ExamResult } from '../types'
 
 export const bookStudent = (studentId: number, examSlotId: number) =>
   apiFetch<ExamRegistration>('/api/exam-registrations', {
@@ -20,3 +20,6 @@ export const markPaid = (id: number) =>
 
 export const cancelRegistration = (id: number) =>
   apiFetch<void>(`/api/exam-registrations/${id}`, { method: 'DELETE' })
+
+export const setExamResult = (id: number, result: ExamResult) =>
+  apiFetch<ExamRegistration>(`/api/exam-registrations/${id}/result`, { method: 'PATCH', body: { result } })

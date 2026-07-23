@@ -10,5 +10,10 @@ export function useExamSlots() {
     await refetch()
   }
 
-  return { examSlots: data ?? [], loading, error, refetch, create }
+  const cancel = async (id: number) => {
+    await examSlotsApi.cancelExamSlot(id)
+    await refetch()
+  }
+
+  return { examSlots: data ?? [], loading, error, refetch, create, cancel }
 }

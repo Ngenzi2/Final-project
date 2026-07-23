@@ -5,6 +5,7 @@ export type TeacherCreateInput = {
   name: string
   email: string
   password: string
+  licenseNumber?: string
 }
 
 export type TimetableSlotInput = {
@@ -24,3 +25,9 @@ export const addTimetableSlot = (teacherId: number, input: TimetableSlotInput) =
 
 export const removeTimetableSlot = (teacherId: number, slotId: number) =>
   apiFetch<Teacher>(`/api/teachers/${teacherId}/timetable/${slotId}`, { method: 'DELETE' })
+
+export const deleteTeacher = (id: number) =>
+  apiFetch<void>(`/api/teachers/${id}`, { method: 'DELETE' })
+
+export const setTeacherActive = (id: number, active: boolean) =>
+  apiFetch<Teacher>(`/api/teachers/${id}/active`, { method: 'PATCH', body: { active } })

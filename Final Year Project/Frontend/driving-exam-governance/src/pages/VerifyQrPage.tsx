@@ -18,29 +18,33 @@ import {
   smallButtonClass,
 } from '../constants/ui'
 
-const VerifyQrPage = () => {
+const VerifyQrPage = ({ onVerified }: { onVerified?: () => void } = {}) => {
   const [code, setCode] = useState('')
   const [result, setResult] = useState<QrVerifyResult | null>(null)
   const [notFound, setNotFound] = useState<string | null>(null)
   const [searching, setSearching] = useState(false)
   const [scannerOpen, setScannerOpen] = useState(false)
 
-  const runVerify = useCallback(async (rawCode: string) => {
-    const trimmed = rawCode.trim()
-    if (!trimmed) return
-    setSearching(true)
-    setResult(null)
-    setNotFound(null)
-    try {
-      const verifyResult = await qrApi.verifyQr(trimmed)
-      setResult(verifyResult)
-      setCode(trimmed)
-    } catch (err) {
-      setNotFound(err instanceof ApiError ? err.message : "This QR code doesn't match any issued ticket.")
-    } finally {
-      setSearching(false)
-    }
-  }, [])
+  const runVerify = useCallback(
+    async (rawCode: string) => {
+      const trimmed = rawCode.trim()
+      if (!trimmed) return
+      setSearching(true)
+      setResult(null)
+      setNotFound(null)
+      try {
+        const verifyResult = await qrApi.verifyQr(trimmed)
+        setResult(verifyResult)
+        setCode(trimmed)
+      } catch (err) {
+        setNotFound(err instanceof ApiError ? err.message : "This QR code doesn't match any issued ticket.")
+      } finally {
+        setSearching(false)
+        onVerified?.()
+      }
+    },
+    [onVerified],
+  )
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -107,7 +111,7 @@ const VerifyQrPage = () => {
         <div className="flex items-center gap-3.5 rounded-2xl border border-red-200 bg-red-50 px-5 py-4">
           <XCircle size={28} className="shrink-0 text-red-500" />
           <div>
-            <p className="m-0 mb-1.5 font-semibold text-[#161a35]">No match found</p>
+            <p className="m-0 mb-1.5 font-semibold text-[#1F2937]">No match found</p>
             <p className={itemMetaClass}>{notFound}</p>
           </div>
         </div>
@@ -116,11 +120,11 @@ const VerifyQrPage = () => {
       {result && (
         <div className={`grid gap-5 rounded-2xl border p-5 ${result.eligible ? 'border-emerald-200 bg-emerald-50/60' : 'border-red-200 bg-red-50/60'}`}>
           <div className="flex flex-wrap items-center gap-4.5">
-            <span className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl bg-[#eef1f8] text-[#5a6178]">
+            <span className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl bg-[#eef1f8] text-[#6B7280]">
               <UserRound size={32} strokeWidth={2} />
             </span>
             <div className="flex-1">
-              <p className="m-0 text-xl font-bold text-[#161a35]">{result.registration.studentName}</p>
+              <p className="m-0 text-xl font-bold text-[#1F2937]">{result.registration.studentName}</p>
               <p className={itemMetaClass}>
                 <span>{result.registration.studentExamType}</span>
               </p>
@@ -154,7 +158,7 @@ const VerifyQrPage = () => {
             </div>
             <div className="rounded-xl bg-white px-4 py-3.5">
               <p className={itemMetaClass}>Exam site</p>
-              <p className="m-0 flex items-center gap-1.5 font-semibold text-[#161a35]">
+              <p className="m-0 flex items-center gap-1.5 font-semibold text-[#1F2937]">
                 <MapPin size={14} /> {result.registration.examSlotName}
               </p>
               <p className={itemMetaClass}>

@@ -30,5 +30,10 @@ export function useStudents(params: StudentListParams = {}) {
     await refetch()
   }
 
-  return { students: data ?? [], loading, error, refetch, register, setTrainingStatus, approve, reject }
+  const remove = async (studentId: number) => {
+    await studentsApi.deleteStudent(studentId)
+    await refetch()
+  }
+
+  return { students: data ?? [], loading, error, refetch, register, setTrainingStatus, approve, reject, remove }
 }

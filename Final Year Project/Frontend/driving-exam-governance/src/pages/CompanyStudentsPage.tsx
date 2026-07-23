@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { useStudents } from '../hooks/useStudents'
 import { useExamRegistrations } from '../hooks/useExamRegistrations'
 import { ApiError } from '../api/client'
@@ -31,8 +32,14 @@ const CompanyStudentsPage = () => {
 
   const handleApprove = async (studentId: number) => {
     setActionError('')
+    const promise = approve(studentId)
+    toast.promise(promise, {
+      loading: 'Approving student...',
+      success: 'Student approved successfully.',
+      error: 'Failed to approve student.'
+    })
     try {
-      await approve(studentId)
+      await promise
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : 'Failed to approve this student.')
     }
@@ -40,8 +47,14 @@ const CompanyStudentsPage = () => {
 
   const handleReject = async (studentId: number) => {
     setActionError('')
+    const promise = reject(studentId)
+    toast.promise(promise, {
+      loading: 'Rejecting student...',
+      success: 'Student rejected successfully.',
+      error: 'Failed to reject student.'
+    })
     try {
-      await reject(studentId)
+      await promise
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : 'Failed to reject this student.')
     }
@@ -89,7 +102,7 @@ const CompanyStudentsPage = () => {
                       <button
                         type="button"
                         onClick={() => handleReject(student.id)}
-                        className="cursor-pointer rounded-xl border border-[#e6e8f0] bg-white px-3.5 py-2.5 text-[0.82rem] font-semibold text-[#6c6f93] hover:border-red-200 hover:text-red-600"
+                        className="cursor-pointer rounded-xl border border-[#E5EAF2] bg-white px-3.5 py-2.5 text-[0.82rem] font-semibold text-[#6B7280] hover:border-red-200 hover:text-red-600"
                       >
                         Reject
                       </button>

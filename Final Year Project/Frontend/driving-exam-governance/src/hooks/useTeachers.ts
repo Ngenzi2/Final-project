@@ -20,5 +20,15 @@ export function useTeachers() {
     await refetch()
   }
 
-  return { teachers: data ?? [], loading, error, refetch, create, addTimetableSlot, removeTimetableSlot }
+  const deleteTeacher = async (teacherId: number) => {
+    await teachersApi.deleteTeacher(teacherId)
+    await refetch()
+  }
+
+  const setActive = async (teacherId: number, active: boolean) => {
+    await teachersApi.setTeacherActive(teacherId, active)
+    await refetch()
+  }
+
+  return { teachers: data ?? [], loading, error, refetch, create, addTimetableSlot, removeTimetableSlot, deleteTeacher, setActive }
 }

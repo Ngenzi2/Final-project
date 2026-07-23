@@ -58,15 +58,15 @@ const TeacherExamsPage = ({ user }: { user: User }) => {
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-        <div className="grid gap-1.5 rounded-xl border border-[#e6e8f0] border-t-8 border-t-brand-navy bg-white p-3.5">
+        <div className="grid gap-1.5 rounded-xl border border-[#E5EAF2] border-t-8 border-t-brand-navy bg-white p-3.5">
           <span
             className="grid h-8 w-8 shrink-0 place-items-center rounded-lg"
             style={{ backgroundColor: '#4f5cff1f', color: '#4f5cff' }}
           >
             <CalendarCheck size={16} strokeWidth={2} />
           </span>
-          <span className="text-[0.82rem] text-[#6c6f93]">Active bookings</span>
-          <strong className="text-[1.15rem] text-[#161a35]">{activeBookings.length}</strong>
+          <span className="text-[0.82rem] text-[#6B7280]">Active bookings</span>
+          <strong className="text-[1.15rem] text-[#1F2937]">{activeBookings.length}</strong>
         </div>
       </div>
 
@@ -75,7 +75,7 @@ const TeacherExamsPage = ({ user }: { user: User }) => {
           <span className={iconBadgeClass}>
             <CalendarCheck size={18} strokeWidth={2} />
           </span>
-          <h3 className="m-0 text-[#141a39]">Book a student for an exam</h3>
+          <h3 className="m-0 text-[#1F2937]">Book a student for an exam</h3>
         </div>
         <p className={itemMetaClass}>Only students marked "ready for exam" can be booked onto an upcoming slot.</p>
         <form onSubmit={handleBook} className="grid gap-2.5">
@@ -130,7 +130,7 @@ const TeacherExamsPage = ({ user }: { user: User }) => {
                       <button
                         type="button"
                         onClick={() => cancel(registration.id)}
-                        className="cursor-pointer rounded-xl border border-[#e6e8f0] bg-white px-3 py-2 text-[0.82rem] font-semibold text-[#6c6f93] hover:border-red-200 hover:text-red-600"
+                        className="cursor-pointer rounded-xl border border-[#E5EAF2] bg-white px-3 py-2 text-[0.82rem] font-semibold text-[#6B7280] hover:border-red-200 hover:text-red-600"
                       >
                         Cancel
                       </button>

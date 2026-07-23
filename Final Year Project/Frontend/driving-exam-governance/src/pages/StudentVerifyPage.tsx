@@ -33,7 +33,7 @@ const StudentVerifyPage = ({ token, onContinue }: StudentVerifyPageProps) => {
 
   return (
     <div className="grid h-screen w-full place-items-center bg-white p-6">
-      <div className="grid w-full max-w-sm justify-items-center gap-5 rounded-2xl border border-[#e6e8f0] border-t-8 border-t-brand-navy bg-white p-8 text-center shadow-[0_25px_70px_rgba(15,23,42,0.1)]">
+      <div className="grid w-full max-w-sm justify-items-center gap-5 rounded-2xl border border-[#E5EAF2] border-t-8 border-t-brand-navy bg-white p-8 text-center shadow-[0_25px_70px_rgba(15,23,42,0.1)]">
         <img src={innesLogo} alt="INNES Driving School" className="h-16 w-auto object-contain" />
 
         {status === 'checking' && <Loader2 size={36} className="animate-spin text-brand-navy" strokeWidth={2} />}
@@ -41,10 +41,10 @@ const StudentVerifyPage = ({ token, onContinue }: StudentVerifyPageProps) => {
         {status === 'error' && <XCircle size={36} className="text-red-500" strokeWidth={2} />}
 
         <div>
-          <h1 className="m-0 mb-2 text-xl font-semibold text-[#14243a]">
+          <h1 className="m-0 mb-2 text-xl font-semibold text-[#1F2937]">
             {status === 'checking' ? 'Verifying email' : status === 'success' ? 'Email verified' : 'Verification failed'}
           </h1>
-          <p className="m-0 text-[0.92rem] text-[#4b507a]">{message}</p>
+          <p className="m-0 text-[0.92rem] text-[#6B7280]">{message}</p>
         </div>
 
         {status !== 'checking' && (
