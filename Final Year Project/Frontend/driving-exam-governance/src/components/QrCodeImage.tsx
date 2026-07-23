@@ -14,7 +14,7 @@ export const QrCodeImage = ({ value, size = 176 }: QrCodeImageProps) => {
     QRCode.toCanvas(canvasRef.current, value, {
       width: size,
       margin: 1,
-      color: { dark: '#14243a', light: '#ffffff' },
+      color: { dark: '#1F2937', light: '#ffffff' },
     }).catch(() => {})
   }, [value, size])
 

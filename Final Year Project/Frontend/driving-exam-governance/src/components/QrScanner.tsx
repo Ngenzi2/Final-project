@@ -69,7 +69,7 @@ export const QrScanner = ({ active, onScan }: QrScannerProps) => {
     return (
       <div className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-5 py-4">
         <CameraOff size={22} className="shrink-0 text-red-500" />
-        <p className="m-0 text-[0.9rem] text-[#6c6f93]">{cameraError}</p>
+        <p className="m-0 text-[0.9rem] text-[#6B7280]">{cameraError}</p>
       </div>
     )
   }
