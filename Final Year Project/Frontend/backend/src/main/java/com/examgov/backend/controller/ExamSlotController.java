@@ -13,6 +13,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -40,7 +41,7 @@ public class ExamSlotController {
     }
 
     @GetMapping("/by-date")
-    @PreAuthorize("hasRole('AUTHORITY')")
+    @PreAuthorize("hasAnyRole('AUTHORITY', 'EXAM_OFFICER')")
     public List<ExamSlotResponse> byDate(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return examSlotService.byDate(date);
@@ -57,8 +58,14 @@ public class ExamSlotController {
         return examSlotService.create(request, principal);
     }
 
-    @GetMapping("/{id}/registrations")
+    @PatchMapping("/{id}/cancel")
     @PreAuthorize("hasRole('AUTHORITY')")
+    public ExamSlotResponse cancel(@PathVariable Long id) {
+        return examSlotService.cancel(id);
+    }
+
+    @GetMapping("/{id}/registrations")
+    @PreAuthorize("hasAnyRole('AUTHORITY', 'EXAM_OFFICER')")
     public List<ExamRegistrationResponse> registrations(@PathVariable Long id) {
         return examRegistrationService.listForSlot(id);
     }

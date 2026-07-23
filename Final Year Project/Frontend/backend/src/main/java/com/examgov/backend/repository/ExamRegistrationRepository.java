@@ -20,4 +20,6 @@ public interface ExamRegistrationRepository extends JpaRepository<ExamRegistrati
     long countByExamSlotIdAndStatus(Long examSlotId, RegistrationStatus status);
 
     Optional<ExamRegistration> findByQrCode(String qrCode);
+
+    List<ExamRegistration> findByVerifiedByOfficerId(Long verifiedByOfficerId);
 }

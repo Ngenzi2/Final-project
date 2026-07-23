@@ -17,11 +17,11 @@ import java.time.LocalDate;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 
 @Entity
-@Table(
-        name = "exam_registrations",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"student_id", "exam_slot_id"}))
+@Table(name = "exam_registrations", uniqueConstraints = @UniqueConstraint(columnNames = { "student_id",
+        "exam_slot_id" }))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -62,4 +62,15 @@ public class ExamRegistration {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ExamResult result = ExamResult.PENDING;
+
+    @Column(nullable = false)
+    @ColumnDefault("false")
+    private boolean attended = false;
+
+    @Column(name = "verification_time")
+    private Instant verificationTime;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "verified_by_officer_id")
+    private User verifiedByOfficer;
 }

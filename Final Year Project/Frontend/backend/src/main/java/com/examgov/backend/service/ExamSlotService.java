@@ -1,5 +1,6 @@
 package com.examgov.backend.service;
 
+import com.examgov.backend.domain.ExamRegistration;
 import com.examgov.backend.domain.ExamSlot;
 import com.examgov.backend.domain.RegistrationStatus;
 import com.examgov.backend.domain.User;
@@ -68,9 +69,34 @@ public class ExamSlotService {
         return toResponse(slot);
     }
 
+    @Transactional
+    public ExamSlotResponse cancel(Long id) {
+        ExamSlot slot = examSlotRepository.findById(id).orElseThrow(() -> new NotFoundException("Exam slot not found."));
+        slot.setCancelled(true);
+        slot = examSlotRepository.save(slot);
+
+        List<ExamRegistration> registrations = examRegistrationRepository.findByExamSlotId(id);
+        registrations.forEach(
+                registration -> {
+                    if (registration.getStatus() == RegistrationStatus.BOOKED) {
+                        registration.setStatus(RegistrationStatus.CANCELLED);
+                    }
+                });
+        examRegistrationRepository.saveAll(registrations);
+
+        return toResponse(slot);
+    }
+
     private ExamSlotResponse toResponse(ExamSlot slot) {
         long bookedCount = examRegistrationRepository.countByExamSlotIdAndStatus(slot.getId(), RegistrationStatus.BOOKED);
         return new ExamSlotResponse(
-                slot.getId(), slot.getName(), slot.getLocation(), slot.getExamDate(), slot.getStartTime(), slot.getCapacity(), bookedCount);
+                slot.getId(),
+                slot.getName(),
+                slot.getLocation(),
+                slot.getExamDate(),
+                slot.getStartTime(),
+                slot.getCapacity(),
+                bookedCount,
+                slot.isCancelled());
     }
 }

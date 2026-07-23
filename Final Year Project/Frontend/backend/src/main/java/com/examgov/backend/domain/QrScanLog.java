@@ -9,42 +9,38 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.Instant;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "exam_slots")
+@Table(name = "qr_scan_logs")
 @Getter
 @Setter
 @NoArgsConstructor
-public class ExamSlot {
+public class QrScanLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String name;
-
-    @Column(nullable = false)
-    private String location;
-
-    @Column(name = "exam_date", nullable = false)
-    private LocalDate examDate;
-
-    @Column(name = "start_time", nullable = false)
-    private LocalTime startTime;
-
-    @Column(nullable = false)
-    private Integer capacity;
-
-    @Column(nullable = false)
-    private boolean cancelled = false;
+    @Column(name = "qr_code", nullable = false)
+    private String qrCode;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by")
-    private User createdBy;
+    @JoinColumn(name = "exam_registration_id")
+    private ExamRegistration examRegistration;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "scanned_by")
+    private User scannedBy;
+
+    @Column(name = "scanned_at", nullable = false)
+    private Instant scannedAt;
+
+    @Column(nullable = false)
+    private boolean eligible;
+
+    private String reason;
 }

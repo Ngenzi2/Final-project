@@ -10,5 +10,6 @@ public record ExamSlotResponse(
         LocalDate examDate,
         LocalTime startTime,
         int capacity,
-        long bookedCount) {
+        long bookedCount,
+        boolean cancelled) {
 }

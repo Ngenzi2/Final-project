@@ -45,7 +45,7 @@ public class ExamRegistrationController {
     }
 
     @PatchMapping("/{id}/pay")
-    @PreAuthorize("hasAnyRole('STUDENT', 'AUTHORITY')")
+    @PreAuthorize("hasRole('AUTHORITY')")
     public ExamRegistrationResponse markPaid(@PathVariable Long id, @AuthenticationPrincipal AppUserDetails principal) {
         return examRegistrationService.markPaid(id, principal);
     }

@@ -7,6 +7,7 @@ import com.examgov.backend.domain.RegistrationStatus;
 import com.examgov.backend.domain.Role;
 import com.examgov.backend.domain.Student;
 import com.examgov.backend.domain.TrainingStatus;
+import com.examgov.backend.domain.User;
 import com.examgov.backend.dto.request.BookingRequest;
 import com.examgov.backend.dto.response.ExamRegistrationResponse;
 import com.examgov.backend.dto.response.QrVerifyResponse;
@@ -35,16 +36,19 @@ public class ExamRegistrationService {
     private final ExamSlotRepository examSlotRepository;
     private final StudentRepository studentRepository;
     private final UserRepository userRepository;
+    private final QrScanLogService qrScanLogService;
 
     public ExamRegistrationService(
             ExamRegistrationRepository examRegistrationRepository,
             ExamSlotRepository examSlotRepository,
             StudentRepository studentRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            QrScanLogService qrScanLogService) {
         this.examRegistrationRepository = examRegistrationRepository;
         this.examSlotRepository = examSlotRepository;
         this.studentRepository = studentRepository;
         this.userRepository = userRepository;
+        this.qrScanLogService = qrScanLogService;
     }
 
     @Transactional
@@ -109,7 +113,7 @@ public class ExamRegistrationService {
         } else {
             registrations =
                     switch (principal.getRole()) {
-                        case AUTHORITY -> examRegistrationRepository.findAll();
+                        case AUTHORITY, EXAM_OFFICER -> examRegistrationRepository.findAll();
                         case COMPANY -> examRegistrationRepository.findByStudent_CompanyId(principal.getCompanyId());
                         case TEACHER -> examRegistrationRepository.findByStudent_TeacherId(principal.getTeacherId());
                         case STUDENT ->
@@ -126,10 +130,9 @@ public class ExamRegistrationService {
         ExamRegistration registration =
                 examRegistrationRepository.findById(id).orElseThrow(() -> new NotFoundException("Registration not found."));
 
-        boolean isOwner = principal.getRole() == Role.STUDENT && registration.getStudent().getId().equals(principal.getStudentId());
-        boolean isAuthority = principal.getRole() == Role.AUTHORITY;
-        if (!isOwner && !isAuthority) {
-            throw new ForbiddenActionException("You do not have access to this registration.");
+        if (principal.getRole() != Role.AUTHORITY) {
+            throw new ForbiddenActionException(
+                    "Only the authority can manually record a payment. Students must pay through the UrubutoPay checkout.");
         }
 
         registration.setPaid(true);
@@ -160,14 +163,32 @@ public class ExamRegistrationService {
         examRegistrationRepository.save(registration);
     }
 
-    @Transactional(readOnly = true)
-    public QrVerifyResponse verify(String qrCode) {
-        ExamRegistration registration =
-                examRegistrationRepository
-                        .findByQrCode(qrCode)
-                        .orElseThrow(() -> new NotFoundException("No registration matches this QR code."));
+    @Transactional
+    public QrVerifyResponse verify(String qrCode, AppUserDetails principal) {
+        User scannedBy = userRepository.findById(principal.getId()).orElse(null);
+        ExamRegistration registration = examRegistrationRepository.findByQrCode(qrCode).orElse(null);
+
+        if (registration == null) {
+            qrScanLogService.log(qrCode, null, scannedBy, false, "No matching registration");
+            throw new NotFoundException("No registration matches this QR code.");
+        }
+
         TrainingStatus trainingStatus = registration.getStudent().getTrainingStatus();
-        boolean eligible = registration.isPaid() && trainingStatus == TrainingStatus.READY_FOR_EXAM;
+        String reason = null;
+        boolean eligible = registration.isPaid()
+                && trainingStatus == TrainingStatus.READY_FOR_EXAM
+                && registration.getStatus() == RegistrationStatus.BOOKED;
+        if (!eligible) {
+            if (registration.getStatus() != RegistrationStatus.BOOKED) {
+                reason = "Registration cancelled";
+            } else if (!registration.isPaid()) {
+                reason = "Not paid";
+            } else {
+                reason = "Training incomplete";
+            }
+        }
+        qrScanLogService.log(qrCode, registration, scannedBy, eligible, reason);
+
         return new QrVerifyResponse(toResponse(registration), trainingStatus, eligible);
     }
 
