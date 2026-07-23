@@ -35,6 +35,9 @@ public class Teacher {
     @Column(nullable = false)
     private String email;
 
+    @Column(name = "license_number")
+    private String licenseNumber;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "company_id", nullable = false)
     private Company company;

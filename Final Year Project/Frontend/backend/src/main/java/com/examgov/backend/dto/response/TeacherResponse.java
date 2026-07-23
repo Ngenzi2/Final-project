@@ -9,6 +9,7 @@ public record TeacherResponse(
         Long id,
         String name,
         String email,
+        String licenseNumber,
         Long companyId,
         LocalDate registeredAt,
         boolean active,

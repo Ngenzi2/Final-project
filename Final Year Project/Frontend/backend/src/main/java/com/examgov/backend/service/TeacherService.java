@@ -53,8 +53,8 @@ public class TeacherService {
                 companyRepository
                         .findById(principal.getCompanyId())
                         .orElseThrow(() -> new NotFoundException("Company not found."));
-        if (!company.isApproved()) {
-            throw new ForbiddenActionException("Company must be approved before registering teachers.");
+        if (!company.isApproved() || company.isSuspended()) {
+            throw new ForbiddenActionException("Company must be approved and not suspended before registering teachers.");
         }
         if (userRepository.existsByEmail(request.email())) {
             throw new ConflictException("An account with email " + request.email() + " already exists.");
@@ -63,6 +63,7 @@ public class TeacherService {
         Teacher teacher = new Teacher();
         teacher.setName(request.name());
         teacher.setEmail(request.email());
+        teacher.setLicenseNumber(request.licenseNumber());
         teacher.setCompany(company);
         teacher.setRegisteredAt(LocalDate.now());
         teacher = teacherRepository.save(teacher);
@@ -83,7 +84,7 @@ public class TeacherService {
     public List<TeacherResponse> list(AppUserDetails principal) {
         List<Teacher> teachers =
                 switch (principal.getRole()) {
-                    case AUTHORITY -> teacherRepository.findAll();
+                    case AUTHORITY, EXAM_OFFICER -> teacherRepository.findAll();
                     case COMPANY -> teacherRepository.findByCompanyId(principal.getCompanyId());
                     case TEACHER ->
                             principal.getTeacherId() != null
@@ -134,6 +135,19 @@ public class TeacherService {
         return toResponse(teacherRepository.save(teacher));
     }
 
+    @Transactional
+    public void delete(Long teacherId, AppUserDetails principal) {
+        Teacher teacher = teacherRepository.findById(teacherId).orElseThrow(() -> new NotFoundException("Teacher not found."));
+        if (principal.getRole() != Role.COMPANY || !teacher.getCompany().getId().equals(principal.getCompanyId())) {
+            throw new ForbiddenActionException("You do not have access to this teacher.");
+        }
+        if (studentRepository.existsByTeacherId(teacherId)) {
+            throw new ConflictException("Cannot delete a teacher with assigned students. Reassign or deactivate them instead.");
+        }
+        userRepository.findByTeacherId(teacherId).ifPresent(userRepository::delete);
+        teacherRepository.delete(teacher);
+    }
+
     private void assertCanManage(Teacher teacher, AppUserDetails principal) {
         if (principal.getRole() == Role.COMPANY && teacher.getCompany().getId().equals(principal.getCompanyId())) {
             return;
@@ -156,6 +170,7 @@ public class TeacherService {
                 teacher.getId(),
                 teacher.getName(),
                 teacher.getEmail(),
+                teacher.getLicenseNumber(),
                 teacher.getCompany().getId(),
                 teacher.getRegisteredAt(),
                 teacher.isActive(),

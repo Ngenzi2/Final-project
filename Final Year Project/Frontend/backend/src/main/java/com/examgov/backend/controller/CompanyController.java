@@ -56,10 +56,29 @@ public class CompanyController {
         return companyService.approve(id);
     }
 
+    @PatchMapping("/{id}/suspend")
+    @PreAuthorize("hasRole('AUTHORITY')")
+    public CompanyResponse suspend(@PathVariable Long id) {
+        return companyService.suspend(id);
+    }
+
+    @PatchMapping("/{id}/unsuspend")
+    @PreAuthorize("hasRole('AUTHORITY')")
+    public CompanyResponse unsuspend(@PathVariable Long id) {
+        return companyService.unsuspend(id);
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('AUTHORITY')")
+    public void delete(@PathVariable Long id) {
+        companyService.delete(id);
+    }
+
     @PatchMapping("/{id}")
     @PreAuthorize("hasAnyRole('COMPANY', 'AUTHORITY')")
     public CompanyResponse update(
-            @PathVariable Long id, @Valid @RequestBody CompanyUpdateRequest request, @AuthenticationPrincipal AppUserDetails principal) {
+            @PathVariable Long id, @Valid @RequestBody CompanyUpdateRequest request,
+            @AuthenticationPrincipal AppUserDetails principal) {
         return companyService.update(id, request, principal);
     }
 
@@ -72,6 +91,7 @@ public class CompanyController {
             @RequestPart(value = "taxCertificate", required = false) MultipartFile taxCertificate,
             @RequestPart(value = "logo", required = false) MultipartFile logo,
             @AuthenticationPrincipal AppUserDetails principal) {
-        return companyService.updateDocuments(id, registrationCertificate, drivingSchoolLicense, taxCertificate, logo, principal);
+        return companyService.updateDocuments(id, registrationCertificate, drivingSchoolLicense, taxCertificate, logo,
+                principal);
     }
 }

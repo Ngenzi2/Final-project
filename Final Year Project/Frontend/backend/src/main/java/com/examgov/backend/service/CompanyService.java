@@ -91,7 +91,7 @@ public class CompanyService {
     @Transactional(readOnly = true)
     public List<CompanyResponse> list(AppUserDetails principal) {
         List<Company> companies;
-        if (principal.getRole() == Role.AUTHORITY) {
+        if (principal.getRole() == Role.AUTHORITY || principal.getRole() == Role.EXAM_OFFICER) {
             companies = companyRepository.findAll();
         } else if (principal.getCompanyId() != null) {
             companies = companyRepository.findById(principal.getCompanyId()).map(List::of).orElse(List.of());
@@ -140,10 +140,12 @@ public class CompanyService {
         assertVisible(company, principal);
 
         if (registrationCertificate != null && !registrationCertificate.isEmpty()) {
-            company.setRegistrationCertificatePath(fileStorageService.store("companies", company.getId(), registrationCertificate));
+            company.setRegistrationCertificatePath(
+                    fileStorageService.store("companies", company.getId(), registrationCertificate));
         }
         if (drivingSchoolLicense != null && !drivingSchoolLicense.isEmpty()) {
-            company.setDrivingSchoolLicensePath(fileStorageService.store("companies", company.getId(), drivingSchoolLicense));
+            company.setDrivingSchoolLicensePath(
+                    fileStorageService.store("companies", company.getId(), drivingSchoolLicense));
         }
         if (taxCertificate != null && !taxCertificate.isEmpty()) {
             company.setTaxCertificatePath(fileStorageService.store("companies", company.getId(), taxCertificate));
@@ -154,8 +156,30 @@ public class CompanyService {
         return toResponse(companyRepository.save(company));
     }
 
+    @Transactional
+    public CompanyResponse suspend(Long id) {
+        Company company = companyRepository.findById(id).orElseThrow(() -> new NotFoundException("Company not found."));
+        company.setSuspended(true);
+        company.setSuspensionDate(java.time.LocalDate.now());
+        return toResponse(companyRepository.save(company));
+    }
+
+    @Transactional
+    public CompanyResponse unsuspend(Long id) {
+        Company company = companyRepository.findById(id).orElseThrow(() -> new NotFoundException("Company not found."));
+        company.setSuspended(false);
+        company.setSuspensionDate(null);
+        return toResponse(companyRepository.save(company));
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        Company company = companyRepository.findById(id).orElseThrow(() -> new NotFoundException("Company not found."));
+        companyRepository.delete(company);
+    }
+
     private void assertVisible(Company company, AppUserDetails principal) {
-        if (principal.getRole() == Role.AUTHORITY) {
+        if (principal.getRole() == Role.AUTHORITY || principal.getRole() == Role.EXAM_OFFICER) {
             return;
         }
         if (principal.getCompanyId() != null && principal.getCompanyId().equals(company.getId())) {
@@ -181,10 +205,13 @@ public class CompanyService {
                         toUrl(company.getTaxCertificatePath()),
                         toUrl(company.getLogoPath())),
                 new CompanyResponse.Admin(
-                        admin.getFullName(), admin.getNationalId(), admin.getPhone(), admin.getEmail(), admin.getPosition()),
+                        admin.getFullName(), admin.getNationalId(), admin.getPhone(), admin.getEmail(),
+                        admin.getPosition()),
                 company.isApproved(),
+                company.isSuspended(),
                 company.getRegistrationDate(),
-                company.getApprovalDate());
+                company.getApprovalDate(),
+                company.getSuspensionDate());
     }
 
     private String toUrl(String path) {

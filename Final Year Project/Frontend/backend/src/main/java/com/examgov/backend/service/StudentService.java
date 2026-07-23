@@ -44,6 +44,9 @@ public class StudentService {
     private final PasswordEncoder passwordEncoder;
     private final FileStorageService fileStorageService;
     private final MailService mailService;
+    private final com.examgov.backend.repository.ExamRegistrationRepository examRegistrationRepository;
+    private final com.examgov.backend.repository.QrScanLogRepository qrScanLogRepository;
+    private final NotificationService notificationService;
 
     public StudentService(
             StudentRepository studentRepository,
@@ -51,13 +54,19 @@ public class StudentService {
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             FileStorageService fileStorageService,
-            MailService mailService) {
+            MailService mailService,
+            com.examgov.backend.repository.ExamRegistrationRepository examRegistrationRepository,
+            com.examgov.backend.repository.QrScanLogRepository qrScanLogRepository,
+            NotificationService notificationService) {
         this.studentRepository = studentRepository;
         this.teacherRepository = teacherRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.fileStorageService = fileStorageService;
         this.mailService = mailService;
+        this.examRegistrationRepository = examRegistrationRepository;
+        this.qrScanLogRepository = qrScanLogRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -65,10 +74,11 @@ public class StudentService {
         if (principal.getTeacherId() == null) {
             throw new ForbiddenActionException("Only a teacher account can register students.");
         }
-        Teacher teacher =
-                teacherRepository.findById(principal.getTeacherId()).orElseThrow(() -> new NotFoundException("Teacher not found."));
-        if (!teacher.getCompany().isApproved()) {
-            throw new ForbiddenActionException("Company must be approved before registering students.");
+        Teacher teacher = teacherRepository.findById(principal.getTeacherId())
+                .orElseThrow(() -> new NotFoundException("Teacher not found."));
+        if (!teacher.getCompany().isApproved() || teacher.getCompany().isSuspended()) {
+            throw new ForbiddenActionException(
+                    "Company must be approved and not suspended before registering students.");
         }
         if (userRepository.existsByEmail(request.email())) {
             throw new ConflictException("An account with email " + request.email() + " already exists.");
@@ -94,7 +104,7 @@ public class StudentService {
 
         User user = new User();
         user.setEmail(request.email());
-        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setPasswordHash(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
         user.setRole(Role.STUDENT);
         user.setName(request.name());
         user.setCompany(teacher.getCompany());
@@ -107,52 +117,65 @@ public class StudentService {
 
     @Transactional
     public StudentResponse approve(Long studentId, AppUserDetails principal) {
-        Student student = studentRepository.findById(studentId).orElseThrow(() -> new NotFoundException("Student not found."));
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new NotFoundException("Student not found."));
         assertCanManageRegistration(student, principal);
 
         if (student.getApprovalStatus() != ApprovalStatus.PENDING) {
-            throw new ConflictException("This student registration has already been " + student.getApprovalStatus().name().toLowerCase() + ".");
+            throw new ConflictException("This student registration has already been "
+                    + student.getApprovalStatus().name().toLowerCase() + ".");
         }
 
         student.setApprovalStatus(ApprovalStatus.APPROVED);
         student.setApprovedAt(LocalDate.now());
-        student.setVerificationToken(generateOtp());
-        student.setVerificationTokenExpiresAt(Instant.now().plus(30, ChronoUnit.MINUTES));
+        student.setEmailVerified(true);
         student = studentRepository.save(student);
 
-        mailService.sendStudentVerificationOtp(student.getEmail(), student.getName(), student.getVerificationToken());
+        String otp = String.format("%06d", RANDOM.nextInt(900000) + 100000);
+        User user = userRepository.findByStudentId(student.getId())
+                .orElseThrow(() -> new NotFoundException("User account not found."));
+        user.setEnabled(true);
+        user.setOtpCode(otp);
+        user.setOtpExpiry(Instant.now().plus(15, ChronoUnit.MINUTES));
+        userRepository.save(user);
+
+        mailService.sendStudentVerificationOtp(student.getEmail(), student.getName(), otp);
 
         return toResponse(student);
     }
 
     @Transactional
     public StudentResponse resendVerificationOtp(Long studentId, AppUserDetails principal) {
-        Student student = studentRepository.findById(studentId).orElseThrow(() -> new NotFoundException("Student not found."));
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new NotFoundException("Student not found."));
         assertCanManageRegistration(student, principal);
 
         if (student.getApprovalStatus() != ApprovalStatus.APPROVED) {
             throw new ConflictException("This student must be approved before a verification code can be sent.");
         }
-        if (student.isEmailVerified()) {
-            throw new ConflictException("This student's email is already verified.");
-        }
 
-        student.setVerificationToken(generateOtp());
-        student.setVerificationTokenExpiresAt(Instant.now().plus(30, ChronoUnit.MINUTES));
-        student = studentRepository.save(student);
+        String otp = String.format("%06d", RANDOM.nextInt(900000) + 100000);
+        User user = userRepository.findByStudentId(student.getId())
+                .orElseThrow(() -> new NotFoundException("User account not found."));
+        user.setEnabled(true);
+        user.setOtpCode(otp);
+        user.setOtpExpiry(Instant.now().plus(15, ChronoUnit.MINUTES));
+        userRepository.save(user);
 
-        mailService.sendStudentVerificationOtp(student.getEmail(), student.getName(), student.getVerificationToken());
+        mailService.sendStudentVerificationOtp(student.getEmail(), student.getName(), otp);
 
         return toResponse(student);
     }
 
     @Transactional
     public StudentResponse reject(Long studentId, AppUserDetails principal) {
-        Student student = studentRepository.findById(studentId).orElseThrow(() -> new NotFoundException("Student not found."));
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new NotFoundException("Student not found."));
         assertCanManageRegistration(student, principal);
 
         if (student.getApprovalStatus() != ApprovalStatus.PENDING) {
-            throw new ConflictException("This student registration has already been " + student.getApprovalStatus().name().toLowerCase() + ".");
+            throw new ConflictException("This student registration has already been "
+                    + student.getApprovalStatus().name().toLowerCase() + ".");
         }
 
         student.setApprovalStatus(ApprovalStatus.REJECTED);
@@ -161,10 +184,9 @@ public class StudentService {
 
     @Transactional
     public StudentVerifyResponse verifyEmail(String email, String otp) {
-        Student student =
-                studentRepository
-                        .findByEmail(email)
-                        .orElseThrow(() -> new NotFoundException("No pending verification found for this email."));
+        Student student = studentRepository
+                .findByEmail(email)
+                .orElseThrow(() -> new NotFoundException("No pending verification found for this email."));
 
         if (student.isEmailVerified()) {
             throw new ConflictException("This email is already verified. You can sign in.");
@@ -211,26 +233,23 @@ public class StudentService {
 
     @Transactional(readOnly = true)
     public List<StudentResponse> list(AppUserDetails principal, Long companyId, Long teacherId, String search) {
-        List<Student> students =
-                switch (principal.getRole()) {
-                    case AUTHORITY -> resolveForAuthority(companyId, teacherId);
-                    case COMPANY -> studentRepository.findByCompanyId(principal.getCompanyId());
-                    case TEACHER -> studentRepository.findByTeacherId(principal.getTeacherId());
-                    case STUDENT ->
-                            principal.getStudentId() != null
-                                    ? studentRepository.findById(principal.getStudentId()).map(List::of).orElse(List.of())
-                                    : List.of();
-                };
+        List<Student> students = switch (principal.getRole()) {
+            case AUTHORITY, EXAM_OFFICER -> resolveForAuthority(companyId, teacherId);
+            case COMPANY -> studentRepository.findByCompanyId(principal.getCompanyId());
+            case TEACHER -> studentRepository.findByTeacherId(principal.getTeacherId());
+            case STUDENT ->
+                principal.getStudentId() != null
+                        ? studentRepository.findById(principal.getStudentId()).map(List::of).orElse(List.of())
+                        : List.of();
+        };
 
         if (search != null && !search.isBlank()) {
             String needle = search.trim().toLowerCase();
-            students =
-                    students.stream()
-                            .filter(
-                                    s ->
-                                            s.getName().toLowerCase().contains(needle)
-                                                    || s.getNationalId().toLowerCase().contains(needle))
-                            .toList();
+            students = students.stream()
+                    .filter(
+                            s -> s.getName().toLowerCase().contains(needle)
+                                    || s.getNationalId().toLowerCase().contains(needle))
+                    .toList();
         }
 
         return students.stream().map(this::toResponse).toList();
@@ -244,7 +263,8 @@ public class StudentService {
         Long companyId = principal.getCompanyId();
 
         List<String> lines;
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
             lines = reader.lines().toList();
         } catch (IOException e) {
             throw new RuntimeException("Failed to read CSV file: " + e.getMessage(), e);
@@ -255,13 +275,14 @@ public class StudentService {
 
         for (int i = 1; i < lines.size(); i++) {
             String line = lines.get(i).trim();
-            if (line.isEmpty()) continue;
+            if (line.isEmpty())
+                continue;
             int rowNumber = i + 1;
             String[] cols = line.split(",", -1);
-            if (cols.length < 6) {
+            if (cols.length < 5) {
                 errors.add(
                         new BulkImportResponse.RowError(
-                                rowNumber, "Expected 6 columns: name,nationalId,email,password,examType,teacherEmail"));
+                                rowNumber, "Expected 5 columns: name,nationalId,email,examType,teacherEmail"));
                 continue;
             }
 
@@ -269,19 +290,18 @@ public class StudentService {
                 String name = cols[0].trim();
                 String nationalId = cols[1].trim();
                 String email = cols[2].trim();
-                String password = cols[3].trim();
-                ExamType examType = ExamType.valueOf(cols[4].trim().toUpperCase());
-                String teacherEmail = cols[5].trim();
+                ExamType examType = ExamType.valueOf(cols[3].trim().toUpperCase());
+                String teacherEmail = cols[4].trim();
 
-                Teacher teacher =
-                        teacherRepository
-                                .findByEmail(teacherEmail)
-                                .orElseThrow(() -> new NotFoundException("No teacher with email " + teacherEmail));
+                Teacher teacher = teacherRepository
+                        .findByEmail(teacherEmail)
+                        .orElseThrow(() -> new NotFoundException("No teacher with email " + teacherEmail));
                 if (!teacher.getCompany().getId().equals(companyId)) {
                     throw new ForbiddenActionException("Teacher " + teacherEmail + " does not belong to your company.");
                 }
-                if (!teacher.getCompany().isApproved()) {
-                    throw new ForbiddenActionException("Company must be approved before registering students.");
+                if (!teacher.getCompany().isApproved() || teacher.getCompany().isSuspended()) {
+                    throw new ForbiddenActionException(
+                            "Company must be approved and not suspended before registering students.");
                 }
                 if (userRepository.existsByEmail(email)) {
                     throw new ConflictException("An account with email " + email + " already exists.");
@@ -300,7 +320,7 @@ public class StudentService {
 
                 User user = new User();
                 user.setEmail(email);
-                user.setPasswordHash(passwordEncoder.encode(password));
+                user.setPasswordHash(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
                 user.setRole(Role.STUDENT);
                 user.setName(name);
                 user.setCompany(teacher.getCompany());
@@ -309,7 +329,8 @@ public class StudentService {
 
                 created.add(toResponse(student));
             } catch (IllegalArgumentException e) {
-                errors.add(new BulkImportResponse.RowError(rowNumber, "Invalid examType (must be CAR, MOTORCYCLE, or TRUCK)"));
+                errors.add(new BulkImportResponse.RowError(rowNumber,
+                        "Invalid examType (must be CAR, MOTORCYCLE, or TRUCK)"));
             } catch (RuntimeException e) {
                 errors.add(new BulkImportResponse.RowError(rowNumber, e.getMessage()));
             }
@@ -334,7 +355,8 @@ public class StudentService {
     @Transactional
     public StudentResponse setTrainingStatus(
             Long studentId, TrainingStatus status, AppUserDetails principal) {
-        Student student = studentRepository.findById(studentId).orElseThrow(() -> new NotFoundException("Student not found."));
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new NotFoundException("Student not found."));
         if (principal.getRole() != Role.TEACHER || !student.getTeacher().getId().equals(principal.getTeacherId())) {
             throw new ForbiddenActionException("You do not have access to this student.");
         }
@@ -356,5 +378,37 @@ public class StudentService {
                 student.getPhotoPath() != null ? "/files/" + student.getPhotoPath() : null,
                 student.getApprovalStatus(),
                 student.isEmailVerified());
+    }
+
+    @Transactional
+    public void delete(Long studentId, AppUserDetails principal) {
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new NotFoundException("Student not found."));
+
+        if (principal.getRole() == Role.TEACHER && !student.getTeacher().getId().equals(principal.getTeacherId())) {
+            throw new ForbiddenActionException("You can only delete your own students.");
+        } else if (principal.getRole() == Role.COMPANY
+                && !student.getCompany().getId().equals(principal.getCompanyId())) {
+            throw new ForbiddenActionException("You can only delete students belonging to your company.");
+        } else if (principal.getRole() != Role.AUTHORITY && principal.getRole() != Role.COMPANY
+                && principal.getRole() != Role.TEACHER) {
+            throw new ForbiddenActionException("You do not have permission to delete students.");
+        }
+
+        String deleterName = principal.getName() + " (" + principal.getRole().name() + ")";
+        String msg = "The student " + student.getName() + " (ID: " + student.getNationalId() + ") was deleted by "
+                + deleterName + ".";
+        notificationService.notifyUsers("Student Registration Deleted", msg, student.getCompany().getId(),
+                student.getTeacher().getId());
+
+        userRepository.findByStudentId(studentId).ifPresent(userRepository::delete);
+
+        List<com.examgov.backend.domain.ExamRegistration> regs = examRegistrationRepository.findByStudentId(studentId);
+        for (com.examgov.backend.domain.ExamRegistration reg : regs) {
+            qrScanLogRepository.deleteByExamRegistrationId(reg.getId());
+        }
+        examRegistrationRepository.deleteAll(regs);
+
+        studentRepository.delete(student);
     }
 }

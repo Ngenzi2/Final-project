@@ -65,6 +65,12 @@ public class TeacherController {
         return teacherService.setActive(id, request.active(), principal);
     }
 
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('COMPANY')")
+    public void delete(@PathVariable Long id, @AuthenticationPrincipal AppUserDetails principal) {
+        teacherService.delete(id, principal);
+    }
+
     public record TeacherActiveRequest(boolean active) {
     }
 }

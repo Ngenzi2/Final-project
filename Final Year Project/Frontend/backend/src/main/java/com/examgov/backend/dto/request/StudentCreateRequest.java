@@ -6,9 +6,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 public record StudentCreateRequest(
-        @NotBlank String name,
-        @NotBlank String nationalId,
-        @NotBlank @Email String email,
-        @NotBlank String password,
-        @NotNull ExamType examType) {
+                @NotBlank String name,
+                @NotBlank String nationalId,
+                @NotBlank @Email String email,
+                @NotNull ExamType examType) {
 }

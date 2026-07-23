@@ -55,12 +55,27 @@ public class Company {
     @Embedded
     private CompanyAdmin admin = new CompanyAdmin();
 
+    @jakarta.persistence.OneToMany(mappedBy = "company", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<User> users = new java.util.ArrayList<>();
+
+    @jakarta.persistence.OneToMany(mappedBy = "company", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<Teacher> teachers = new java.util.ArrayList<>();
+
+    @jakarta.persistence.OneToMany(mappedBy = "company", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<Student> students = new java.util.ArrayList<>();
+
     @Column(nullable = false)
     private boolean approved = false;
+
+    @Column(nullable = false)
+    private boolean suspended = false;
 
     @Column(name = "registration_date", nullable = false)
     private LocalDate registrationDate;
 
     @Column(name = "approval_date")
     private LocalDate approvalDate;
+
+    @Column(name = "suspension_date")
+    private LocalDate suspensionDate;
 }

@@ -74,7 +74,8 @@ public class StudentController {
 
     @PatchMapping("/{id}/resend-verification")
     @PreAuthorize("hasAnyRole('COMPANY', 'AUTHORITY')")
-    public StudentResponse resendVerification(@PathVariable Long id, @AuthenticationPrincipal AppUserDetails principal) {
+    public StudentResponse resendVerification(@PathVariable Long id,
+            @AuthenticationPrincipal AppUserDetails principal) {
         return studentService.resendVerificationOtp(id, principal);
     }
 
@@ -88,5 +89,11 @@ public class StudentController {
     public BulkImportResponse bulkImport(
             @RequestPart("file") MultipartFile file, @AuthenticationPrincipal AppUserDetails principal) {
         return studentService.bulkImport(file, principal);
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('TEACHER', 'COMPANY', 'AUTHORITY')")
+    public void delete(@PathVariable Long id, @AuthenticationPrincipal AppUserDetails principal) {
+        studentService.delete(id, principal);
     }
 }

@@ -55,11 +55,15 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(
-                        auth ->
-                                auth.requestMatchers("/api/auth/login").permitAll()
-                                        .requestMatchers("/api/students/verify").permitAll()
-                                        .requestMatchers("/files/**").permitAll()
-                                        .anyRequest().authenticated())
+                        auth -> auth
+                                .requestMatchers("/api/auth/login", "/api/auth/identify", "/api/auth/student/send-otp",
+                                        "/api/auth/student/verify-otp", "/api/auth/forgot-password",
+                                        "/api/auth/reset-password")
+                                .permitAll()
+                                .requestMatchers("/api/students/verify").permitAll()
+                                .requestMatchers("/files/**").permitAll()
+                                .requestMatchers("/error").permitAll()
+                                .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

@@ -58,4 +58,10 @@ public class User {
 
     @Column(nullable = false, columnDefinition = "boolean default true")
     private boolean enabled = true;
+
+    @Column(name = "otp_code")
+    private String otpCode;
+
+    @Column(name = "otp_expiry")
+    private Instant otpExpiry;
 }

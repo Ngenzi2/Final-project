@@ -28,6 +28,31 @@ public class AuthController {
         return authService.login(request.email(), request.password());
     }
 
+    @PostMapping("/student/send-otp")
+    public void sendStudentOtp(@RequestBody java.util.Map<String, String> request) {
+        authService.sendStudentOtp(request.get("email"));
+    }
+
+    @PostMapping("/student/verify-otp")
+    public LoginResponse verifyStudentOtp(@RequestBody java.util.Map<String, String> request) {
+        return authService.verifyStudentOtp(request.get("email"), request.get("otp"));
+    }
+
+    @PostMapping("/forgot-password")
+    public void forgotPassword(@RequestBody java.util.Map<String, String> request) {
+        authService.sendForgotPasswordOtp(request.get("email"));
+    }
+
+    @PostMapping("/reset-password")
+    public void resetPassword(@RequestBody java.util.Map<String, String> request) {
+        authService.resetPassword(request.get("email"), request.get("otp"), request.get("newPassword"));
+    }
+
+    @PostMapping("/identify")
+    public java.util.Map<String, String> identify(@RequestBody java.util.Map<String, String> request) {
+        return authService.identifyUser(request.get("email"));
+    }
+
     @GetMapping("/me")
     public UserResponse me(@AuthenticationPrincipal AppUserDetails principal) {
         return authService.me(principal.getEmail());
