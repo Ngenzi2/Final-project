@@ -1,26 +1,47 @@
-export type Role = 'AUTHORITY' | 'COMPANY' | 'TEACHER' | 'STUDENT'
+export type Role = 'AUTHORITY' | 'COMPANY' | 'TEACHER' | 'STUDENT' | 'EXAM_OFFICER'
 
 export type Page =
   | 'overview'
   | 'companies'
+  | 'userManagement'
   | 'directory'
   | 'examSites'
-  | 'verifyQr'
+  | 'teacherMonitoring'
+  | 'studentMonitoring'
+  | 'paymentManagement'
+  | 'qrLogs'
+  | 'reportsAnalytics'
+  | 'settings'
   | 'companyOverview'
   | 'companyTeachers'
   | 'companyStudents'
+  | 'companyStudentManagement'
+  | 'companyPayments'
+  | 'companyExamSchedule'
+  | 'companyReports'
   | 'teacherStudents'
   | 'teacherTimetable'
   | 'teacherExams'
+  | 'teacherPayments'
+  | 'studentDashboard'
   | 'studentPayment'
   | 'studentQrTicket'
   | 'studentTimetable'
+  | 'studentExamDetails'
+  | 'studentNotifications'
+  | 'officerDashboard'
+  | 'officerQrScanner'
+  | 'officerVerification'
+  | 'officerAttendance'
+  | 'officerReports'
+  | 'profile'
 
 export type WeekDay = 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT'
 export type ExamType = 'CAR' | 'MOTORCYCLE' | 'TRUCK'
 export type TrainingStatus = 'IN_TRAINING' | 'READY_FOR_EXAM'
 export type RegistrationStatus = 'BOOKED' | 'CANCELLED'
 export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+export type ExamResult = 'PENDING' | 'PASSED' | 'FAILED'
 
 export type User = {
   id: number
@@ -63,16 +84,20 @@ export type Company = {
     position: string
   }
   approved: boolean
+  suspended: boolean
   registrationDate: string
   approvalDate: string | null
+  suspensionDate: string | null
 }
 
 export type Teacher = {
   id: number
   name: string
   email: string
+  licenseNumber: string | null
   companyId: number
   registeredAt: string
+  active: boolean
   timetable: TimetableSlot[]
 }
 
@@ -99,6 +124,7 @@ export type ExamSlot = {
   startTime: string
   capacity: number
   bookedCount: number
+  cancelled: boolean
 }
 
 export type ExamRegistration = {
@@ -120,10 +146,56 @@ export type ExamRegistration = {
   paymentDate: string | null
   qrCode: string
   status: RegistrationStatus
+  result: ExamResult
 }
 
 export type QrVerifyResult = {
   registration: ExamRegistration
   trainingStatus: TrainingStatus
   eligible: boolean
+}
+
+export type QrScanLog = {
+  id: number
+  qrCode: string
+  studentId: number | null
+  studentName: string | null
+  companyName: string | null
+  examSlotName: string | null
+  scannedByName: string
+  scannedByDeleted: boolean
+  scannedAt: string
+  eligible: boolean
+  reason: string | null
+}
+
+export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED'
+
+export type Payment = {
+  id: number
+  examRegistrationId: number
+  studentId: number
+  studentName: string
+  companyId: number
+  companyName: string
+  amount: number
+  siteShare: number
+  companyShare: number
+  paymentReference: string
+  transactionId: string
+  externalTransactionId: string | null
+  status: PaymentStatus
+  paymentMethod: string | null
+  payerPhoneNumber: string | null
+  paymentDate: string | null
+  failureReason: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type PaymentConfig = {
+  totalAmount: number
+  siteShare: number
+  companyShare: number
+  testMode: boolean
 }
